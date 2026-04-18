@@ -1,0 +1,72 @@
+.auth-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.glass-modal-content {
+  width: 90%;
+  max-width: 400px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.glass-modal-content h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+}
+
+.auth-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.auth-error {
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  color: #ff6b6b;
+  font-size: 0.85rem;
+}
+
+.glass-modal-content input {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.submit-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.switch-auth {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.switch-auth:hover {
+  color: var(--primary);
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  width: 100%;
+}

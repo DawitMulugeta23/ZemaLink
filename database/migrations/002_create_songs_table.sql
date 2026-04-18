@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS songs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    artist VARCHAR(100) NOT NULL,
+    album VARCHAR(200),
+    duration INT DEFAULT 0,
+    file_path VARCHAR(500),
+    cover_image VARCHAR(500),
+    plays INT DEFAULT 0,
+    uploader_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL
+);

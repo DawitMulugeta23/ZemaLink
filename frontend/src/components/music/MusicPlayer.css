@@ -1,0 +1,95 @@
+.music-player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  z-index: 1000;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 250px;
+}
+
+.player-info img {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+}
+
+.player-info h4 {
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.player-info p {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.player-controls {
+  flex: 1;
+  max-width: 500px;
+}
+
+.control-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.control-buttons button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: white;
+  transition: transform 0.2s;
+}
+
+.control-buttons button:hover {
+  transform: scale(1.1);
+}
+
+.play-pause {
+  font-size: 2rem !important;
+}
+
+.player-progress input {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.player-quality {
+  padding: 0.25rem 0.75rem;
+  background: rgba(108, 92, 231, 0.3);
+  border-radius: 20px;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .music-player {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .player-info {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .player-controls {
+    width: 100%;
+  }
+}

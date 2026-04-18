@@ -1,0 +1,3 @@
+{"sessionId":"bda510","runId":"initial","hypothesisId":"H0","location":"src/main.jsx:bootstrap:start","message":"Bootstrap started","data":{},"timestamp":1776496289695}
+{"sessionId":"bda510","runId":"initial","hypothesisId":"H1-H3","location":"src/main.jsx:bootstrap:module-inspect","message":"Context module exports","data":{"playerContextJsxKeys":["PlayerProvider"],"playerContextJsKeys":["PlayerContext"]},"timestamp":1776496289863}
+{"sessionId":"bda510","runId":"initial","hypothesisId":"H1-H4","location":"src/main.jsx:bootstrap:app-import-failed","message":"App import failed","data":{"error":"The requested module 'http://localhost:5173/src/context/PlayerContext.js' doesn't provide an export named: 'PlayerProvider'"},"timestamp":1776496290108}

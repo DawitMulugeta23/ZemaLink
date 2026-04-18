@@ -1,0 +1,11 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# Preflight must hit index.php so CORS + 200 response stay consistent
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^ index.php [L]
+
+# Route all non-file requests to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
