@@ -1,6 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+function extractSixDigit(text) {
+  if (!text) return "";
+  const m =
+    text.match(/(?:OTP code:|verification code:?|code:?)\s*(\d{6})/i) ||
+    text.match(/\b(\d{6})\b/);
+  return m ? m[1] : "";
+}
 
 function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -12,6 +20,7 @@ function VerifyEmail() {
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [otpHint, setOtpHint] = useState(() => searchParams.get("hint") || "");
+  const [shownCode, setShownCode] = useState("");
 
   const email = useMemo(
     () =>
@@ -20,6 +29,24 @@ function VerifyEmail() {
         .trim(),
     [searchParams, pendingVerificationEmail],
   );
+
+  useEffect(() => {
+    const hintRaw = searchParams.get("hint") || "";
+    let decodedHint = "";
+    try {
+      decodedHint = decodeURIComponent(hintRaw);
+    } catch {
+      decodedHint = hintRaw;
+    }
+    const fromQuery =
+      searchParams.get("code") || extractSixDigit(decodedHint);
+    const stored = email ? sessionStorage.getItem(`zema_otp_${email}`) : "";
+    const resolved = fromQuery || stored;
+    if (resolved) {
+      setShownCode(resolved);
+      setCode((prev) => (prev.length >= 6 ? prev : resolved));
+    }
+  }, [email, searchParams]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -37,6 +64,7 @@ function VerifyEmail() {
     const result = await verifyCode(email, code.trim());
     setBusy(false);
     if (result.success) {
+      sessionStorage.removeItem(`zema_otp_${email}`);
       setMsg(result.message || "Email verified. Please sign in.");
       setTimeout(() => navigate("/login"), 900);
     } else {
@@ -57,6 +85,12 @@ function VerifyEmail() {
     if (result.success) {
       const text = result.message || "A new code has been sent.";
       setMsg(text);
+      const newCode = result.verification_code || extractSixDigit(text);
+      if (newCode) {
+        sessionStorage.setItem(`zema_otp_${email}`, newCode);
+        setShownCode(newCode);
+        setCode(newCode);
+      }
       if (/OTP code:/i.test(text)) {
         setOtpHint(text);
       }
@@ -74,11 +108,25 @@ function VerifyEmail() {
           Enter the 6-digit code sent to
           <span className="text-white font-medium"> {email || "your email"}</span>
         </p>
-        {otpHint && (
-          <div className="mb-4 rounded-xl border border-amber-400/50 bg-amber-500/15 p-3">
-            <p className="text-xs text-amber-100">
-              OTP helper:
+        {shownCode && (
+          <div className="mb-5 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-5 text-center">
+            <p className="text-xs uppercase tracking-wider text-emerald-100/90 mb-2">
+              Your verification code
             </p>
+            <p
+              className="text-3xl sm:text-4xl font-bold tracking-[0.4em] pl-[0.2em] text-emerald-50 font-mono"
+              aria-live="polite"
+            >
+              {shownCode}
+            </p>
+            <p className="mt-2 text-xs text-emerald-100/75">
+              Same code is pre-filled below. Copy it if your email is delayed.
+            </p>
+          </div>
+        )}
+        {otpHint && !shownCode && (
+          <div className="mb-4 rounded-xl border border-amber-400/50 bg-amber-500/15 p-3">
+            <p className="text-xs text-amber-100">OTP helper:</p>
             <p className="mt-1 text-sm font-semibold tracking-wide text-amber-50">
               {otpHint}
             </p>

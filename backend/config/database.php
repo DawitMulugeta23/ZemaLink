@@ -1,8 +1,10 @@
 <?php
-$host = 'localhost';
-$dbname = 'zema_music';
-$username = 'root';
-$password = '';
+require_once __DIR__ . '/../integrations.php';
+
+$host = zemalink_env('DB_HOST', 'localhost');
+$dbname = zemalink_env('DB_NAME', 'zema_music');
+$username = zemalink_env('DB_USER', 'root');
+$password = zemalink_env('DB_PASSWORD', '');
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);

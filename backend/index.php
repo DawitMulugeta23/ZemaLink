@@ -104,19 +104,7 @@ function ensure_users_schema(PDO $pdo): void {
     }
 }
 
-// Database connection
-$host = 'localhost';
-$dbname = 'zema_music';
-$username = 'root';
-$password = '';
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-} catch(PDOException $e) {
-    die(json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]));
-}
+require_once __DIR__ . '/config/database.php';
 
 ensure_users_schema($pdo);
 
@@ -214,6 +202,10 @@ if ($resource === 'auth' && $id === 'register' && $_SERVER['REQUEST_METHOD'] ===
     $hashed = password_hash($password, PASSWORD_DEFAULT);
     $isApproved = ($role === 'audience') ? 1 : 0;
     $adminCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+    if ($role === 'admin' && $adminCount > 0) {
+        echo json_encode(['success' => false, 'message' => 'An administrator account already exists.']);
+        exit();
+    }
     $emailVerified = ($adminCount === 0 && $role === 'admin') ? 1 : 0;
     $verificationCode = $emailVerified ? null : str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $verificationExpires = $emailVerified ? null : date('Y-m-d H:i:s', time() + (15 * 60));
@@ -235,13 +227,17 @@ if ($resource === 'auth' && $id === 'register' && $_SERVER['REQUEST_METHOD'] ===
         if (!$emailVerified && !$emailSent) {
             $registerMessage = 'Email sending failed right now. Use this OTP code: ' . $verificationCode;
         }
-        echo json_encode([
+        $out = [
             'success' => true,
             'message' => $registerMessage,
             'requires_verification' => $emailVerified !== 1,
             'verification_email' => $email,
             'email_sent' => $emailSent,
-        ]);
+        ];
+        if ($verificationCode !== null && $verificationCode !== '') {
+            $out['verification_code'] = $verificationCode;
+        }
+        echo json_encode($out);
     } else {
         echo json_encode(['success' => false, 'message' => 'Registration failed']);
     }
@@ -383,12 +379,17 @@ elseif ($resource === 'auth' && $id === 'resend-code' && $_SERVER['REQUEST_METHO
         ->execute([$code, $expires, $user['id']]);
     $emailSent = zemalink_send_verification_email((string) $user['email'], (string) ($user['name'] ?? 'User'), $code);
     if ($emailSent) {
-        echo json_encode(['success' => true, 'message' => 'A new verification code has been sent']);
+        echo json_encode([
+            'success' => true,
+            'message' => 'A new verification code has been sent',
+            'verification_code' => $code,
+        ]);
     } else {
         echo json_encode([
             'success' => true,
             'message' => 'Email sending failed right now. Use this OTP code: ' . $code,
             'email_sent' => false,
+            'verification_code' => $code,
         ]);
     }
     exit();

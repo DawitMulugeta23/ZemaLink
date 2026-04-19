@@ -50,28 +50,28 @@ function Home() {
     {
       role: "Admin",
       email: "admin@zemalink.com",
-      password: "admin123",
+      password: "password",
       icon: "👑",
       color: "red",
     },
     {
       role: "Musician",
       email: "musician@zemalink.com",
-      password: "music123",
+      password: "password",
       icon: "🎤",
       color: "purple",
     },
     {
       role: "Audience",
       email: "audience@zemalink.com",
-      password: "listen123",
+      password: "password",
       icon: "🎧",
       color: "green",
     },
     {
       role: "Demo",
       email: "demo@zemalink.com",
-      password: "demo123",
+      password: "password",
       icon: "🎵",
       color: "blue",
     },
@@ -140,7 +140,8 @@ function Home() {
             ))}
           </div>
           <p className="text-center text-xs text-white/50 mt-3">
-            Click on any credential and use it to login
+            Seed accounts use password <span className="font-mono text-white/70">password</span>{" "}
+            (matches default bcrypt in sample SQL).
           </p>
         </div>
       )}

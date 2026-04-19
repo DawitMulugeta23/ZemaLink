@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { authService } from "../services/authService";
 
 function Register() {
   const [searchParams] = useSearchParams();
   const adminMode = searchParams.get("role") === "admin";
+  const [adminExists, setAdminExists] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -19,6 +21,21 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const s = await authService.adminExists();
+      if (cancelled || !s?.success) return;
+      setAdminExists(!!s.admin_exists);
+      if (s.admin_exists && adminMode) {
+        navigate("/register", { replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminMode, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -83,6 +100,10 @@ function Register() {
 
     if (result.success) {
       setSuccess(result.message || "Registration successful!");
+      const em = (result.verificationEmail || formData.email).toLowerCase();
+      if (result.requiresVerification && result.verificationCode) {
+        sessionStorage.setItem(`zema_otp_${em}`, result.verificationCode);
+      }
       setTimeout(() => {
         if (result.requiresVerification) {
           const hint = encodeURIComponent(result.message || "");
@@ -124,6 +145,21 @@ function Register() {
         {success && (
           <div className="mb-4 p-3 rounded-xl bg-green-500/20 border border-green-500/50 text-green-200 text-sm text-center">
             {success}
+          </div>
+        )}
+
+        {!adminExists && !adminMode && (
+          <div className="mb-4 p-4 rounded-xl border border-amber-400/40 bg-amber-500/15 text-center">
+            <p className="text-sm text-amber-100/95 mb-3">
+              No administrator is registered yet. Create the first admin account to manage the
+              platform.
+            </p>
+            <Link
+              to="/register?role=admin"
+              className="inline-flex justify-center items-center px-5 py-2.5 rounded-full font-semibold text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md hover:opacity-95 transition-opacity"
+            >
+              Register administrator
+            </Link>
           </div>
         )}
 

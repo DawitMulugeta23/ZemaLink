@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { authService } from "../services/authService";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -8,31 +9,45 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [adminExists, setAdminExists] = useState(true);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const s = await authService.adminExists();
+      if (!cancelled && s?.success) {
+        setAdminExists(!!s.admin_exists);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const demoAccounts = [
     {
       email: "admin@zemalink.com",
-      password: "admin123",
+      password: "password",
       role: "Admin",
       icon: "👑",
     },
     {
       email: "musician@zemalink.com",
-      password: "music123",
+      password: "password",
       role: "Musician",
       icon: "🎤",
     },
     {
       email: "audience@zemalink.com",
-      password: "listen123",
+      password: "password",
       role: "Audience",
       icon: "🎧",
     },
     {
       email: "demo@zemalink.com",
-      password: "demo123",
+      password: "password",
       role: "Demo",
       icon: "🎵",
     },
@@ -85,10 +100,25 @@ function Login() {
           </div>
         )}
 
+        {!adminExists && (
+          <div className="mb-4 p-4 rounded-xl border border-amber-400/40 bg-amber-500/15 text-center">
+            <p className="text-sm text-amber-100/95 mb-3">
+              No administrator account exists yet. Register the first admin to continue setup.
+            </p>
+            <Link
+              to="/register?role=admin"
+              className="inline-flex justify-center items-center px-5 py-2.5 rounded-full font-semibold text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md hover:opacity-95 transition-opacity"
+            >
+              Register administrator
+            </Link>
+          </div>
+        )}
+
         {/* Demo Accounts Quick Select */}
         <div className="mb-6">
           <p className="text-xs text-white/50 text-center mb-2">
-            Quick Login (Click any):
+            Quick login (seed data — password is{" "}
+            <span className="text-white/70 font-mono">password</span>):
           </p>
           <div className="flex flex-wrap gap-2 justify-center">
             {demoAccounts.map((account, idx) => (

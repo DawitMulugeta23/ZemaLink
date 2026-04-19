@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
           message: response.message,
           requiresVerification: !!response.requires_verification,
           verificationEmail: response.verification_email || email,
+          verificationCode: response.verification_code ?? null,
         };
       } else {
         return { success: false, message: response.message };

@@ -11,18 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 session_start();
 
-// Database connection
-$host = 'localhost';
-$dbname = 'zema_music';
-$username = 'root';
-$password = '';
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die(json_encode(['error' => 'Database connection failed']));
-}
+require_once __DIR__ . '/config/database.php';
 
 // Get JSON input
 $input = json_decode(file_get_contents('php://input'), true);

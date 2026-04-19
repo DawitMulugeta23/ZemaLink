@@ -45,57 +45,90 @@ function SongCard({ song }) {
 
   return (
     <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && handleCardClick()}
-        className="group bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:border-red-400/30"
-        onClick={handleCardClick}
-      >
-        <div className="relative rounded-lg overflow-hidden mb-2">
-          <img
-            src={coverImage}
-            alt={song?.title || "Song cover"}
-            className={`w-full aspect-square object-cover transition-transform duration-300 group-hover:scale-105 ${locked ? "opacity-60" : ""}`}
-            onError={(e) => {
-              e.target.src = DEFAULT_COVER;
-            }}
-          />
-          {song?.is_premium ? (
-            <div className="absolute top-2 left-2">
-              <PremiumBadge price={song.price} />
-            </div>
-          ) : null}
-          {locked ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <span className="text-3xl" title="Purchase required">
-                🔒
-              </span>
-            </div>
-          ) : (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <span className="text-3xl text-white">▶</span>
-            </div>
-          )}
-        </div>
-        <h3 className="font-semibold text-sm truncate flex items-center gap-1">
-          <span className="truncate">{song?.title}</span>
-          {song?.is_premium ? <span title="PRO">💎</span> : null}
-        </h3>
-        <p className="text-xs text-white/50 truncate">{song?.artist}</p>
-        <div className="flex justify-between items-center mt-2 text-xs text-white/40">
-          <span>❤️ {song?.likes_count || 0}</span>
-          <span>▶ {song?.plays || 0}</span>
-        </div>
-        {user && (
-          <button
-            type="button"
-            onClick={handleReport}
-            className="mt-2 text-[10px] text-white/35 hover:text-red-300 underline-offset-2 hover:underline"
-          >
-            Report
-          </button>
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && handleCardClick()}
+      className="group relative flex flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-3 shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-red-400/35 hover:shadow-xl hover:shadow-red-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400/60"
+      onClick={handleCardClick}
+    >
+      <div className="relative mb-3 overflow-hidden rounded-xl ring-1 ring-white/10">
+        <img
+          src={coverImage}
+          alt={song?.title || "Song cover"}
+          className={`aspect-square w-full object-cover transition duration-300 ease-out group-hover:scale-[1.04] ${locked ? "opacity-55" : ""}`}
+          onError={(e) => {
+            e.target.src = DEFAULT_COVER;
+          }}
+        />
+        {song?.is_premium ? (
+          <div className="absolute left-2 top-2 z-10">
+            <PremiumBadge price={song.price} />
+          </div>
+        ) : null}
+        {locked ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[1px]">
+            <span
+              className="text-3xl drop-shadow-lg"
+              title="Purchase required"
+              aria-hidden
+            >
+              🔒
+            </span>
+          </div>
+        ) : (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/70 via-black/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <span
+              className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl text-white shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-105"
+              aria-hidden
+            >
+              ▶
+            </span>
+          </div>
         )}
       </div>
+
+      <h3 className="mb-0.5 flex min-h-[1.25rem] items-center gap-1 text-sm font-semibold leading-tight text-white">
+        <span className="truncate" title={song?.title}>
+          {song?.title}
+        </span>
+        {song?.is_premium ? (
+          <span className="shrink-0 text-base" title="Premium track">
+            💎
+          </span>
+        ) : null}
+      </h3>
+      <p
+        className="mb-2 truncate text-xs text-white/55"
+        title={song?.artist}
+      >
+        {song?.artist}
+      </p>
+
+      <div className="mt-auto flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-[11px] font-medium tabular-nums text-white/50 ring-1 ring-white/5">
+        <span className="inline-flex items-center gap-1">
+          <span className="text-red-300/90" aria-hidden>
+            ♥
+          </span>
+          <span>{song?.likes_count ?? 0}</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="text-emerald-300/80" aria-hidden>
+            ▶
+          </span>
+          <span>{song?.plays ?? 0}</span>
+        </span>
+      </div>
+
+      {user ? (
+        <button
+          type="button"
+          onClick={handleReport}
+          className="mt-2 w-full rounded-lg border border-transparent py-1 text-center text-[10px] font-medium uppercase tracking-wide text-white/35 transition hover:border-red-400/25 hover:bg-red-500/10 hover:text-red-200/90"
+        >
+          Report
+        </button>
+      ) : null}
+    </div>
   );
 }
 
