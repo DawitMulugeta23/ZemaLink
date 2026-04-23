@@ -13,6 +13,7 @@ function SongUpload({ onSuccess }) {
     price: 0,
   });
   const [audioData, setAudioData] = useState(null);
+  const [mediaType, setMediaType] = useState("audio");
   const [coverData, setCoverData] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -21,7 +22,7 @@ function SongUpload({ onSuccess }) {
     e.preventDefault();
 
     if (!audioData) {
-      setMessage("Please upload an audio file");
+      setMessage(`Please upload a ${mediaType} file`);
       return;
     }
 
@@ -33,6 +34,7 @@ function SongUpload({ onSuccess }) {
       audio_url: audioData.url,
       audio_public_id: audioData.publicId,
       audio_duration: audioData.duration,
+      media_type: mediaType,
       cover_url: coverData?.url || null,
       cover_public_id: coverData?.publicId || null,
     };
@@ -63,6 +65,7 @@ function SongUpload({ onSuccess }) {
           price: 0,
         });
         setAudioData(null);
+        setMediaType("audio");
         setCoverData(null);
         if (onSuccess) onSuccess();
       } else {
@@ -143,9 +146,26 @@ function SongUpload({ onSuccess }) {
         </div>
 
         <div>
-          <label className="block text-white/70 mb-2">Audio File (MP3) *</label>
+          <label className="block text-white/70 mb-2">Media Type *</label>
+          <select
+            value={mediaType}
+            onChange={(e) => {
+              setMediaType(e.target.value);
+              setAudioData(null);
+            }}
+            className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+          >
+            <option value="audio">Audio</option>
+            <option value="video">Video</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-white/70 mb-2">
+            {mediaType === "video" ? "Video File *" : "Audio File (MP3) *"}
+          </label>
           <CloudinaryUpload
-            type="audio"
+            type={mediaType === "video" ? "video" : "audio"}
             onUploadSuccess={(data) => setAudioData(data)}
           />
         </div>

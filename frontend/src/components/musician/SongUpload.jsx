@@ -6,6 +6,7 @@ function SongUpload({ onUploaded }) {
   const [artist, setArtist] = useState("");
   const [album, setAlbum] = useState("");
   const [genre, setGenre] = useState("Pop");
+  const [mediaType, setMediaType] = useState("audio");
   const [isPremium, setIsPremium] = useState(false);
   const [price, setPrice] = useState("");
   const [file, setFile] = useState(null);
@@ -16,9 +17,15 @@ function SongUpload({ onUploaded }) {
 
   const validateFiles = () => {
     const nextErrors = [];
-    if (!file) nextErrors.push("Please select an audio file from your device.");
+    if (!file) {
+      nextErrors.push(
+        `Please select a ${mediaType === "video" ? "video" : "audio"} file from your device.`,
+      );
+    }
     if (file && file.size > 25 * 1024 * 1024) {
-      nextErrors.push("Audio file must be 25MB or less.");
+      nextErrors.push(
+        `${mediaType === "video" ? "Video" : "Audio"} file must be 25MB or less.`,
+      );
     }
     if (cover && cover.size > 8 * 1024 * 1024) {
       nextErrors.push("Cover image must be 8MB or less.");
@@ -44,6 +51,7 @@ function SongUpload({ onUploaded }) {
     fd.append("artist", artist);
     fd.append("album", album);
     fd.append("genre", genre);
+    fd.append("media_type", mediaType);
     fd.append("is_premium", isPremium ? "1" : "");
     fd.append("price", isPremium ? String(parseFloat(price)) : "0");
     fd.append("file", file);
@@ -56,6 +64,7 @@ function SongUpload({ onUploaded }) {
         setArtist("");
         setAlbum("");
         setGenre("Pop");
+        setMediaType("audio");
         setFile(null);
         setCover(null);
         setErrors([]);
@@ -150,18 +159,38 @@ function SongUpload({ onUploaded }) {
         )}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-xs text-white/60 sm:col-span-2">
+          Media type
+          <select
+            className="mt-1 w-full rounded-xl bg-black/30 border border-white/15 px-3 py-2 text-sm text-white"
+            value={mediaType}
+            onChange={(e) => {
+              setMediaType(e.target.value);
+              setFile(null);
+            }}
+          >
+            <option value="audio">Audio</option>
+            <option value="video">Video</option>
+          </select>
+        </label>
         <label className="block rounded-xl border border-dashed border-white/25 bg-black/20 p-3 text-xs text-white/60">
-          Master audio file * (mp3/wav/m4a)
+          {mediaType === "video"
+            ? "Master video file * (mp4/webm/mov)"
+            : "Master audio file * (mp3/wav/m4a)"}
           <input
             type="file"
-            accept=".mp3,.wav,.m4a,audio/*"
+            accept={
+              mediaType === "video"
+                ? ".mp4,.webm,.mov,.m4v,video/*"
+                : ".mp3,.wav,.m4a,audio/*"
+            }
             className="mt-2 block w-full text-sm text-white/80 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-500/80 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white hover:file:bg-purple-500"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
           <p className="mt-2 text-[11px] text-white/45">
             {file
               ? `${file.name} · ${(file.size / (1024 * 1024)).toFixed(2)} MB`
-              : "No audio file selected"}
+              : `No ${mediaType} file selected`}
           </p>
         </label>
         <label className="block rounded-xl border border-dashed border-white/25 bg-black/20 p-3 text-xs text-white/60">

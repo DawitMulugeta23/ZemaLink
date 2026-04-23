@@ -5,17 +5,32 @@ import {
   useRef,
   useState,
 } from "react";
+import { useAuth } from "./AuthContext";
 import { songService } from "../services/songService";
 
 export const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
+  const { user } = useAuth();
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [likedSongs, setLikedSongs] = useState([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const audioRef = useRef(null);
+  const mediaRef = useRef(null);
+  const stopPlayback = (clearSong = false) => {
+    const el = mediaRef.current;
+    if (el) {
+      el.pause();
+      el.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    if (clearSong) {
+      setCurrentSong(null);
+    }
+  };
   const hasPlayableSource = (song) =>
     Boolean(song?.file_path && String(song.file_path).trim() !== "");
 
@@ -29,7 +44,7 @@ export function PlayerProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const el = audioRef.current;
+    const el = mediaRef.current;
     if (!el) return;
     const onTime = () => setCurrentTime(el.currentTime);
     const onMeta = () => setDuration(el.duration || 0);
@@ -45,7 +60,7 @@ export function PlayerProvider({ children }) {
   }, [currentSong]);
 
   useEffect(() => {
-    const el = audioRef.current;
+    const el = mediaRef.current;
     if (!el || !currentSong || !hasPlayableSource(currentSong)) return;
     if (isPlaying) {
       el.play().catch(() => setIsPlaying(false));
@@ -58,16 +73,19 @@ export function PlayerProvider({ children }) {
     if (song?.can_play === false || !hasPlayableSource(song)) {
       return;
     }
-    if (audioRef.current && currentSong?.id === song.id) {
+    if (mediaRef.current && currentSong?.id === song.id) {
       if (isPlaying) {
-        audioRef.current.pause();
+        mediaRef.current.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current.play().then(() => {
-          setIsPlaying(true);
-        }).catch(() => {
-          setIsPlaying(false);
-        });
+        mediaRef.current
+          .play()
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch(() => {
+            setIsPlaying(false);
+          });
       }
     } else {
       setCurrentSong(song);
@@ -79,25 +97,28 @@ export function PlayerProvider({ children }) {
   };
 
   const togglePlay = () => {
-    if (!audioRef.current || !currentSong || !hasPlayableSource(currentSong)) {
+    if (!mediaRef.current || !currentSong || !hasPlayableSource(currentSong)) {
       setIsPlaying(false);
       return;
     }
     if (isPlaying) {
-      audioRef.current.pause();
+      mediaRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(() => {
-        setIsPlaying(false);
-      });
+      mediaRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          setIsPlaying(false);
+        });
     }
   };
 
   const seekTo = (t) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = t;
+    if (mediaRef.current) {
+      mediaRef.current.currentTime = t;
       setCurrentTime(t);
     }
   };
@@ -115,17 +136,29 @@ export function PlayerProvider({ children }) {
     await loadLikedSongs();
   };
 
+  useEffect(() => {
+    // Auto-stop player when user logs out.
+    if (!user) {
+      stopPlayback(true);
+      setLikedSongs([]);
+      return;
+    }
+    loadLikedSongs();
+  }, [user]);
+
   return (
     <PlayerContext.Provider
       value={{
         currentSong,
         isPlaying,
         likedSongs,
-        audioRef,
+        mediaRef,
+        audioRef: mediaRef,
         playSong,
         togglePlay,
         toggleLike,
         loadLikedSongs,
+        stopPlayback,
         currentTime,
         duration,
         seekTo,

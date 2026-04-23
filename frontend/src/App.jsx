@@ -1,4 +1,5 @@
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { useState } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navbar from "./components/layout/Navbar";
@@ -24,6 +25,8 @@ import Subscription from "./pages/Subscription";
 import VerifyEmail from "./pages/VerifyEmail";
 
 function App() {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
     <Router>
       <AuthProvider>
@@ -37,8 +40,15 @@ function App() {
             <div className="min-h-screen bg-black/30">
               <Navbar />
               <div className="flex pt-16">
-                <Sidebar />
-                <main className="flex-1 ml-0 md:ml-72 pt-4 pb-24 px-4 md:px-8">
+                <Sidebar
+                  isCollapsed={isSidebarCollapsed}
+                  onToggle={() => setIsSidebarCollapsed((prev) => !prev)}
+                />
+                <main
+                  className={`flex-1 ml-0 pt-4 pb-24 px-4 md:px-8 transition-all duration-300 ${
+                    isSidebarCollapsed ? "md:ml-24" : "md:ml-72"
+                  }`}
+                >
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />

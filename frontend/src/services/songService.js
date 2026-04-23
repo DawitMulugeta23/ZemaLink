@@ -1,11 +1,29 @@
 import { api } from "./api";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 
+function inferMediaType(path) {
+  const raw = String(path || "").toLowerCase();
+  if (!raw) return "audio";
+  if (
+    raw.includes(".mp4") ||
+    raw.includes(".webm") ||
+    raw.includes(".mov") ||
+    raw.includes(".m4v") ||
+    raw.includes(".mkv") ||
+    raw.includes("video/upload")
+  ) {
+    return "video";
+  }
+  return "audio";
+}
+
 function mapSong(s) {
   if (!s) return s;
+  const filePath = resolveMediaUrl(s.file_path);
   return {
     ...s,
-    file_path: resolveMediaUrl(s.file_path),
+    file_path: filePath,
+    media_type: s.media_type || inferMediaType(filePath),
     cover_image:
       s.cover_image && s.cover_image !== "null"
         ? resolveMediaUrl(s.cover_image)

@@ -103,6 +103,9 @@ function SongCard({ song }) {
       >
         {song?.artist}
       </p>
+      <p className="mb-2 text-[11px] uppercase tracking-wide text-white/45">
+        {song?.media_type === "video" ? "Video" : "Audio"}
+      </p>
 
       <div className="mt-auto flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-[11px] font-medium tabular-nums text-white/50 ring-1 ring-white/5">
         <span className="inline-flex items-center gap-1">

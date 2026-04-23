@@ -15,17 +15,17 @@ function MusicPlayer() {
     currentTime,
     duration,
     seekTo,
-    audioRef,
+    mediaRef,
   } = usePlayer();
 
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
+    if (mediaRef.current) {
+      mediaRef.current.volume = volume / 100;
     }
-  }, [volume, audioRef]);
+  }, [volume, mediaRef]);
 
   const handleSeek = (e) => {
     const seekTime = (e.target.value / 100) * duration;
@@ -69,6 +69,7 @@ function MusicPlayer() {
     currentSong.file_path && String(currentSong.file_path).trim() !== ""
       ? currentSong.file_path
       : null;
+  const isVideo = currentSong?.media_type === "video";
 
   const coverImage =
     currentSong.cover_image && currentSong.cover_image !== "null"
@@ -77,7 +78,21 @@ function MusicPlayer() {
 
   return (
     <>
-      {audioSrc ? <audio ref={audioRef} src={audioSrc} /> : <audio ref={audioRef} />}
+      {audioSrc ? (
+        isVideo ? (
+          <video
+            ref={mediaRef}
+            src={audioSrc}
+            playsInline
+            preload="metadata"
+            className="hidden"
+          />
+        ) : (
+          <audio ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />
+        )
+      ) : (
+        <audio ref={mediaRef} preload="metadata" className="hidden" />
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/10 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -103,6 +118,9 @@ function MusicPlayer() {
                 </h4>
                 <p className="text-xs text-white/50 truncate">
                   {currentSong.artist}
+                </p>
+                <p className="text-[11px] text-white/45 uppercase tracking-wide">
+                  {isVideo ? "Video" : "Audio"}
                 </p>
               </div>
               <button

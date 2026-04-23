@@ -44,7 +44,11 @@ function CloudinaryUpload({ onUploadSuccess, type = "image" }) {
         folder: `zema_music/${type === "image" ? "covers" : "songs"}`,
         resourceType: type === "image" ? "image" : "video",
         clientAllowedFormats:
-          type === "image" ? ["jpg", "png", "jpeg"] : ["mp3", "m4a", "wav"],
+          type === "image"
+            ? ["jpg", "png", "jpeg"]
+            : type === "video"
+              ? ["mp4", "webm", "mov", "m4v"]
+              : ["mp3", "m4a", "wav"],
         maxFileSize: type === "image" ? 5000000 : 15000000, // 5MB for images, 15MB for audio
         styles: {
           palette: {
@@ -102,7 +106,13 @@ function CloudinaryUpload({ onUploadSuccess, type = "image" }) {
       >
         {uploading
           ? "Uploading..."
-          : `Upload ${type === "image" ? "Cover Image" : "Audio File"}`}
+          : `Upload ${
+              type === "image"
+                ? "Cover Image"
+                : type === "video"
+                  ? "Video File"
+                  : "Audio File"
+            }`}
       </button>
 
       {progress > 0 && progress < 100 && (
@@ -131,6 +141,15 @@ function CloudinaryUpload({ onUploadSuccess, type = "image" }) {
           <audio controls className="w-full mt-2">
             <source src={preview} />
           </audio>
+        </div>
+      )}
+
+      {preview && type === "video" && (
+        <div className="mt-4 p-3 rounded-xl bg-white/10">
+          <p className="text-sm text-white/70">✓ Video uploaded successfully</p>
+          <video controls className="w-full mt-2 rounded-lg">
+            <source src={preview} />
+          </video>
         </div>
       )}
     </div>
