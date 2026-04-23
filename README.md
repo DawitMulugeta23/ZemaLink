@@ -1,9 +1,9 @@
-to running backend:using cmd
-cd D:\dawit\xamp\htdocs\ZemaLink\backend
-D:\dawit\xamp\php\php.exe -S localhost:8000 router.php
+Run backend first from `backend`:
 
-Or run the helper script from the backend folder:
-start-server.bat
+`D:\dawit\xampp\php\php.exe -S 127.0.0.1:8000 router.php`
 
-to run frontend use integrated terminal
-npm run dev
+Then run frontend from `frontend`:
+
+`npm install`
+
+`npm run dev`
