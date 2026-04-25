@@ -23,6 +23,7 @@ import Purchased from "./pages/Purchased";
 import Register from "./pages/Register";
 import Subscription from "./pages/Subscription";
 import VerifyEmail from "./pages/VerifyEmail";
+import Player from "./pages/Player";  // Add this import
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -54,6 +55,7 @@ function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/verify-email" element={<VerifyEmail />} />
                     <Route path="/" element={<Home />} />
+                    <Route path="/player" element={<Player />} />  {/* Add this route */}
                     <Route path="/browse" element={<Browse />} />
                     <Route path="/library" element={<Library />} />
                     <Route path="/playlist/:id" element={<Playlist />} />

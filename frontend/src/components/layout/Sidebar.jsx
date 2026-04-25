@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { songService } from "../../services/songService";
 
 function Sidebar({ isCollapsed, onToggle }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [playlists, setPlaylists] = useState([]);
 
   const loadPlaylists = async () => {
@@ -19,34 +20,89 @@ function Sidebar({ isCollapsed, onToggle }) {
     }
   }, [user]);
 
-  const renderLabel = (label) =>
-    isCollapsed ? (
-      <span className="pointer-events-none absolute left-full top-1/2 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-white/15 bg-black/90 px-2 py-1 text-xs text-white group-hover:block">
+  // Handle genre click - search by genre
+  const handleGenreClick = (genre) => {
+    navigate(`/browse?genre=${encodeURIComponent(genre)}`);
+  };
+
+  // Navigation items with their icons and labels
+  const navItems = [
+    { path: "/", icon: "🏠", label: "Home", show: true },
+    { path: "/browse", icon: "🔍", label: "Browse", show: true },
+    { path: "/library", icon: "📚", label: "Library", show: true },
+    { path: "/profile", icon: "👤", label: "Profile", show: true },
+    { path: "/admin-dashboard", icon: "👑", label: "Admin Dashboard", show: user?.role === "admin" },
+    { path: "/admin-registered", icon: "🧾", label: "Registered Users", show: user?.role === "admin" },
+    { path: "/musician-dashboard", icon: "🎤", label: "Studio", show: user?.role === "musician" },
+    { path: "/purchased", icon: "💎", label: "Purchased", show: !!user },
+    { path: "/subscription", icon: "⭐", label: "Subscribe", show: !!user },
+  ];
+
+  const genres = [
+    { name: "Rock", icon: "🎸" },
+    { name: "Pop", icon: "🎤" },
+    { name: "Jazz", icon: "🎹" },
+    { name: "Electronic", icon: "🎧" },
+    { name: "Hip Hop", icon: "🎙️" },
+    { name: "Classical", icon: "🎻" },
+  ];
+
+  // Tooltip component for collapsed state
+  const Tooltip = ({ label }) => {
+    if (!isCollapsed) return null;
+    return (
+      <span className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 px-3 py-1.5 text-xs font-medium text-white bg-gray-900/95 backdrop-blur-md rounded-md shadow-lg border border-white/20 whitespace-nowrap transition-all duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
         {label}
       </span>
-    ) : (
-      <span className="text-sm font-medium">{label}</span>
+    );
+  };
+
+  const NavLink = ({ to, icon, label, onClick }) => {
+    const content = (
+      <>
+        <span className="text-xl transition-transform duration-200 group-hover:scale-110">
+          {icon}
+        </span>
+        {!isCollapsed && <span className="text-sm font-medium ml-3">{label}</span>}
+        <Tooltip label={label} />
+      </>
     );
 
-  const itemClass = `group relative flex items-center px-3 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 ${
-    isCollapsed ? "justify-center" : "gap-3"
+    if (onClick) {
+      return (
+        <button onClick={onClick} className={navLinkClass}>
+          {content}
+        </button>
+      );
+    }
+
+    return (
+      <Link to={to} className={navLinkClass}>
+        {content}
+      </Link>
+    );
+  };
+
+  const navLinkClass = `group relative flex items-center w-full px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 ${
+    isCollapsed ? "justify-center" : "justify-start gap-3"
   }`;
 
   return (
     <aside
-      className={`fixed left-4 top-20 h-[calc(100vh-6rem)] overflow-y-auto bg-white/5 backdrop-blur-xl border border-white/15 rounded-2xl p-4 hidden md:block transition-all duration-300 hover:bg-white/10 ${
-        isCollapsed ? "w-16" : "w-64"
+      className={`fixed left-4 top-20 h-[calc(100vh-6rem)] overflow-y-auto bg-black/40 backdrop-blur-xl border border-white/15 rounded-2xl p-4 hidden md:block transition-all duration-300 hover:bg-black/50 ${
+        isCollapsed ? "w-20" : "w-64"
       }`}
     >
-      <div className={`mb-4 flex ${isCollapsed ? "justify-center" : "justify-end"}`}>
+      {/* Toggle Button - Default state is collapsed (-> icon means expand) */}
+      <div className={`mb-6 flex ${isCollapsed ? "justify-center" : "justify-end"}`}>
         <button
           type="button"
           onClick={onToggle}
-          className="rounded-lg border border-white/20 px-2 py-1 text-xs text-white/80 hover:bg-white/10"
+          className="group relative flex items-center justify-center w-8 h-8 rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300"
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={isCollapsed ? "Expand" : "Collapse"}
         >
-          {isCollapsed ? "->" : "<-"}
+          <span className="text-sm">{isCollapsed ? "→" : "←"}</span>
+          <Tooltip label={isCollapsed ? "Expand" : "Collapse"} />
         </button>
       </div>
 
@@ -58,77 +114,13 @@ function Sidebar({ isCollapsed, onToggle }) {
           </h3>
         )}
         <ul className="space-y-1">
-          <li>
-            <Link to="/" className={itemClass}>
-              <span className="text-xl group-hover:scale-110 transition-transform">
-                🏠
-              </span>
-              {renderLabel("Home")}
-            </Link>
-          </li>
-          <li>
-            <Link to="/browse" className={itemClass}>
-              <span className="text-xl group-hover:scale-110 transition-transform">
-                🔍
-              </span>
-              {renderLabel("Browse")}
-            </Link>
-          </li>
-          <li>
-            <Link to="/library" className={itemClass}>
-              <span className="text-xl group-hover:scale-110 transition-transform">
-                📚
-              </span>
-              {renderLabel("Library")}
-            </Link>
-          </li>
-          <li>
-            <Link to="/profile" className={itemClass}>
-              <span className="text-xl group-hover:scale-110 transition-transform">
-                👤
-              </span>
-              {renderLabel("Profile")}
-            </Link>
-          </li>
-          {user?.role === "admin" && (
-            <>
-              <li>
-                <Link to="/admin-dashboard" className={itemClass}>
-                  <span className="text-xl">👑</span>
-                  {renderLabel("Admin")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin-registered" className={itemClass}>
-                  <span className="text-xl">🧾</span>
-                  {renderLabel("Registered")}
-                </Link>
-              </li>
-            </>
-          )}
-          {user?.role === "musician" && (
-            <li>
-              <Link to="/musician-dashboard" className={itemClass}>
-                <span className="text-xl">🎤</span>
-                {renderLabel("Studio")}
-              </Link>
-            </li>
-          )}
-          {user && (
-            <>
-              <li>
-                <Link to="/purchased" className={itemClass}>
-                  <span className="text-xl">💎</span>
-                  {renderLabel("Purchased")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/subscription" className={itemClass}>
-                  <span className="text-xl">⭐</span>
-                  {renderLabel("Subscribe")}
-                </Link>
-              </li>
-            </>
+          {navItems.map(
+            (item) =>
+              item.show && (
+                <li key={item.path}>
+                  <NavLink to={item.path} icon={item.icon} label={item.label} />
+                </li>
+              )
           )}
         </ul>
       </div>
@@ -145,21 +137,22 @@ function Sidebar({ isCollapsed, onToggle }) {
             {playlists.length > 0 ? (
               playlists.map((playlist) => (
                 <li key={playlist.id}>
-                  <Link to={`/playlist/${playlist.id}`} className={itemClass}>
-                    <span className="text-lg group-hover:scale-110 transition-transform">
-                      📋
-                    </span>
-                    {renderLabel(playlist.name)}
-                  </Link>
+                  <NavLink
+                    to={`/playlist/${playlist.id}`}
+                    icon="📋"
+                    label={playlist.name}
+                  />
                 </li>
               ))
             ) : (
               <li
-                className={`px-3 py-2 text-sm text-white/40 ${
-                  isCollapsed ? "text-center text-xs" : ""
+                className={`flex items-center px-3 py-2.5 text-sm text-white/40 ${
+                  isCollapsed ? "justify-center" : ""
                 }`}
               >
-                No playlists yet
+                <span className="text-xl">📋</span>
+                {!isCollapsed && <span className="ml-3">No playlists yet</span>}
+                {isCollapsed && <Tooltip label="No playlists yet" />}
               </li>
             )}
           </ul>
@@ -174,42 +167,20 @@ function Sidebar({ isCollapsed, onToggle }) {
           </h3>
         )}
         <ul className="space-y-1">
-          <li>
-            <a
-              href="#"
-              className={itemClass}
-            >
-              <span className="text-xl">🎸</span>
-              {renderLabel("Rock")}
-            </a>
-          </li>
-          <li>
-            <a
-              href="#"
-              className={itemClass}
-            >
-              <span className="text-xl">🎤</span>
-              {renderLabel("Pop")}
-            </a>
-          </li>
-          <li>
-            <a
-              href="#"
-              className={itemClass}
-            >
-              <span className="text-xl">🎹</span>
-              {renderLabel("Jazz")}
-            </a>
-          </li>
-          <li>
-            <a
-              href="#"
-              className={itemClass}
-            >
-              <span className="text-xl">🎧</span>
-              {renderLabel("Electronic")}
-            </a>
-          </li>
+          {genres.map((genre) => (
+            <li key={genre.name}>
+              <button
+                onClick={() => handleGenreClick(genre.name)}
+                className={navLinkClass}
+              >
+                <span className="text-xl transition-transform duration-200 group-hover:scale-110">
+                  {genre.icon}
+                </span>
+                {!isCollapsed && <span className="text-sm font-medium ml-3">{genre.name}</span>}
+                <Tooltip label={genre.name} />
+              </button>
+            </li>
+          ))}
         </ul>
       </div>
     </aside>

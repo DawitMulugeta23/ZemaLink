@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { usePlayer } from "../../context/PlayerContext";
-
 import { DEFAULT_COVER } from "../../constants";
 
 function MusicPlayer() {
@@ -55,43 +54,31 @@ function MusicPlayer() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const isLiked =
-    currentSong && likedSongs?.some((s) => s.id === currentSong.id);
+  const isLiked = currentSong && likedSongs?.some((s) => s.id === currentSong.id);
 
   if (!currentSong) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/10 p-4 text-center">
+      <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/10 p-4 text-center z-50">
         <p className="text-white/50 text-sm">Select a song to play</p>
       </div>
     );
   }
-  const audioSrc =
-    currentSong.file_path && String(currentSong.file_path).trim() !== ""
-      ? currentSong.file_path
-      : null;
-  const isVideo = currentSong?.media_type === "video";
 
-  const coverImage =
-    currentSong.cover_image && currentSong.cover_image !== "null"
-      ? currentSong.cover_image
-      : DEFAULT_COVER;
+  const audioSrc = currentSong.file_path && String(currentSong.file_path).trim() !== ""
+    ? currentSong.file_path
+    : null;
+  const isVideo = currentSong?.media_type === "video";
+  const coverImage = currentSong.cover_image && currentSong.cover_image !== "null"
+    ? currentSong.cover_image
+    : DEFAULT_COVER;
 
   return (
     <>
-      {audioSrc ? (
-        isVideo ? (
-          <video
-            ref={mediaRef}
-            src={audioSrc}
-            playsInline
-            preload="metadata"
-            className="hidden"
-          />
-        ) : (
-          <audio ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />
-        )
-      ) : (
-        <audio ref={mediaRef} preload="metadata" className="hidden" />
+      {audioSrc && !isVideo && (
+        <audio ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />
+      )}
+      {audioSrc && isVideo && (
+        <video ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />
       )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/10 z-50">
@@ -102,12 +89,13 @@ function MusicPlayer() {
               <img
                 src={coverImage}
                 alt={currentSong.title}
-                className="w-12 h-12 rounded-lg object-cover"
+                className="w-12 h-12 rounded-lg object-cover cursor-pointer"
+                onClick={() => window.location.href = "/player"}
                 onError={(e) => {
                   e.target.src = DEFAULT_COVER;
                 }}
               />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => window.location.href = "/player"}>
                 <h4 className="text-sm font-semibold truncate">
                   {currentSong.title}
                   {currentSong?.is_premium ? (
@@ -188,6 +176,15 @@ function MusicPlayer() {
                 className="flex-1 h-1 rounded-full bg-white/20 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-500"
               />
             </div>
+
+            {/* Expand to Player Page Button */}
+            <button
+              onClick={() => window.location.href = "/player"}
+              className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-sm transition"
+            >
+              <span>🎵</span>
+              <span>Now Playing</span>
+            </button>
           </div>
         </div>
       </div>

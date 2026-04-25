@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import SongCard from "../components/music/SongCard";
 import { songService } from "../services/songService";
 
 function Browse() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [songs, setSongs] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,6 +18,7 @@ function Browse() {
     setLoading(true);
     try {
       const data = await songService.getSongs();
+      console.log("Loaded songs:", data);
       setSongs(data || []);
     } catch (error) {
       console.error("Error loading songs:", error);
@@ -25,25 +28,55 @@ function Browse() {
     }
   };
 
-  useEffect(() => {
-    loadSongs();
-  }, []);
+  const searchByGenre = async (genre) => {
+    setLoading(true);
+    try {
+      const allSongs = await songService.getSongs();
+      console.log("All songs for genre search:", allSongs);
+      const filtered = allSongs.filter(
+        (song) => song.genre?.toLowerCase() === genre.toLowerCase()
+      );
+      console.log(`Filtered by genre ${genre}:`, filtered);
+      setSongs(filtered);
+      setSearchQuery(`Genre: ${genre}`);
+    } catch (error) {
+      console.error("Genre search error:", error);
+      setSongs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+  // Check URL params on component mount
+  useEffect(() => {
+    const genreParam = searchParams.get("genre");
+    const searchParam = searchParams.get("search");
+    
+    if (genreParam) {
+      searchByGenre(genreParam);
+    } else if (searchParam) {
+      setSearchQuery(searchParam);
+      performSearch(searchParam);
+    } else {
+      loadSongs();
+    }
+  }, [searchParams]);
+
+  const performSearch = async (query) => {
+    if (!query.trim()) {
       loadSongs();
       return;
     }
 
     setLoading(true);
     try {
-      const data = await songService.search(searchQuery);
+      const data = await songService.search(query);
       setSongs(data || []);
 
       // Save to recent searches
       const updated = [
-        searchQuery,
-        ...recentSearches.filter((s) => s !== searchQuery),
+        query,
+        ...recentSearches.filter((s) => s !== query),
       ].slice(0, 5);
       setRecentSearches(updated);
       localStorage.setItem("recentSearches", JSON.stringify(updated));
@@ -53,6 +86,14 @@ function Browse() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      loadSongs();
+      return;
+    }
+    await performSearch(searchQuery);
   };
 
   const handleKeyPress = (e) => {
@@ -71,7 +112,7 @@ function Browse() {
       return;
     }
     setFilteredRecent(
-      recentSearches.filter((term) => term.toLowerCase().includes(q)),
+      recentSearches.filter((term) => term.toLowerCase().includes(q))
     );
   }, [searchQuery, recentSearches]);
 
@@ -87,7 +128,7 @@ function Browse() {
           <div className="flex-1 relative">
             <input
               type="text"
-              placeholder="Search by song, artist, or album..."
+              placeholder="Search by song, artist, album, or genre..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -119,7 +160,7 @@ function Browse() {
                 key={i}
                 onClick={() => {
                   setSearchQuery(term);
-                  setTimeout(handleSearch, 100);
+                  setTimeout(() => performSearch(term), 100);
                 }}
                 className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 transition"
               >
@@ -153,15 +194,19 @@ function Browse() {
                   ? "No songs found. Try a different search."
                   : "No songs available yet."}
               </p>
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="mt-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-white/70 text-sm"
+                >
+                  Clear search and show all songs
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
               {songs.map((song) => (
-                <SongCard
-                  key={song.id}
-                  song={song}
-                  onAccessGranted={loadSongs}
-                />
+                <SongCard key={song.id} song={song} onAccessGranted={loadSongs} />
               ))}
             </div>
           )}

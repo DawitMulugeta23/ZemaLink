@@ -6,10 +6,10 @@ import { DEFAULT_COVER } from "../../constants";
 import PremiumBadge from "./PremiumBadge";
 import { songService } from "../../services/songService";
 
-function SongCard({ song }) {
+function SongCard({ song, onAccessGranted }) {
+  const navigate = useNavigate();
   const { playSong } = usePlayer();
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const coverImage =
     song?.cover_image && song.cover_image !== "null" && song.cover_image !== ""
@@ -27,7 +27,10 @@ function SongCard({ song }) {
       navigate(`/pro-deal?songId=${song.id}`);
       return;
     }
+    // First set the current song in player context
     playSong(song);
+    // Then navigate to player page
+    navigate("/player");
   };
 
   const handleReport = (e) => {

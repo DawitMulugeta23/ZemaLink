@@ -43,3 +43,35 @@
   background: linear-gradient(135deg, #ef4444, #ec4899);
   border-radius: 10px;
 }
+/* Tooltip animations */
+.group {
+  position: relative;
+}
+
+.group .tooltip {
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.2s ease-in-out;
+  transform: translateX(-5px);
+}
+
+.group:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Custom scrollbar for related music section */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ef4444, #ec4899);
+  border-radius: 10px;
+}
