@@ -61,6 +61,14 @@ export const songService = {
     return [];
   },
 
+  getTopRated: async (limit = 10) => {
+    const response = await api.get(`songs/top-rated?limit=${limit}`);
+    if (response.success && response.songs) {
+      return response.songs.map(mapSong);
+    }
+    return [];
+  },
+
   getLikes: async () => {
     const response = await api.get("user/likes");
     if (response.success && Array.isArray(response.likes)) {
@@ -70,10 +78,19 @@ export const songService = {
   },
 
   toggleLike: async (songId) => {
-    // Using FormData for POST
     const formData = new FormData();
     formData.append("song_id", songId);
     return await api.postForm("user/like", formData);
+  },
+
+  rateSong: async (songId, rating) => {
+    const response = await api.post("song/rate", { song_id: songId, rating });
+    return response;
+  },
+
+  getUserRating: async (songId) => {
+    const response = await api.get(`song/user-rating?song_id=${songId}`);
+    return response;
   },
 
   getPlaylists: async () => {
@@ -93,7 +110,6 @@ export const songService = {
   },
 
   createPlaylist: async (name) => {
-    // Using FormData for POST
     const formData = new FormData();
     formData.append("name", name);
     return await api.postForm("playlists", formData);

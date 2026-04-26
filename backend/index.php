@@ -87,8 +87,10 @@ require_once __DIR__ . '/schema_platform.php';
 require_once __DIR__ . '/integrations.php';
 require_once __DIR__ . '/models/User.php';
 require_once __DIR__ . '/platform_routes.php';
+require_once __DIR__ . '/services/RatingService.php';
 
 $userModel = new User($pdo);
+$ratingService = new RatingService($pdo);
 
 // ============================================
 // Helper functions
@@ -405,13 +407,29 @@ if ($resource === 'auth' && $id === 'admin-exists' && $_SERVER['REQUEST_METHOD']
 if ($resource === 'songs' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($id === 'trending') {
         $stmt = $pdo->query(
-            "SELECT * FROM songs WHERE is_approved = 1 ORDER BY plays DESC LIMIT 10"
+            "SELECT s.*, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                    COALESCE(s.rating, 0) as rating
+             FROM songs s 
+             WHERE s.is_approved = 1 
+             ORDER BY s.plays DESC 
+             LIMIT 10"
         );
         $songs = $stmt->fetchAll();
         echo json_encode(['success' => true, 'songs' => $songs]);
+    } elseif ($id === 'top-rated') {
+        $limit = (int) ($_GET['limit'] ?? 10);
+        $songs = $ratingService->getTopRated($limit);
+        echo json_encode(['success' => true, 'songs' => $songs]);
     } else {
         $stmt = $pdo->query(
-            "SELECT * FROM songs WHERE is_approved = 1 ORDER BY featured DESC, created_at DESC LIMIT 50"
+            "SELECT s.*, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                    COALESCE(s.rating, 0) as rating
+             FROM songs s 
+             WHERE s.is_approved = 1 
+             ORDER BY s.featured DESC, s.created_at DESC 
+             LIMIT 50"
         );
         $songs = $stmt->fetchAll();
         echo json_encode(['success' => true, 'songs' => $songs]);
@@ -429,7 +447,14 @@ if ($resource === 'user' && $id === 'likes' && $_SERVER['REQUEST_METHOD'] === 'G
         echo json_encode(['success' => true, 'likes' => []]);
         exit();
     }
-    $stmt = $pdo->prepare("SELECT s.* FROM likes l JOIN songs s ON l.song_id = s.id WHERE l.user_id = ?");
+    $stmt = $pdo->prepare(
+        "SELECT s.*, 
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                COALESCE(s.rating, 0) as rating
+         FROM likes l 
+         JOIN songs s ON l.song_id = s.id 
+         WHERE l.user_id = ?"
+    );
     $stmt->execute([$_SESSION['user_id']]);
     $likes = $stmt->fetchAll();
     echo json_encode(['success' => true, 'likes' => $likes]);
@@ -453,12 +478,254 @@ if ($resource === 'user' && $id === 'like' && $_SERVER['REQUEST_METHOD'] === 'PO
     if ($stmt->fetch()) {
         $stmt = $pdo->prepare("DELETE FROM likes WHERE user_id = ? AND song_id = ?");
         $stmt->execute([$userId, $songId]);
-        echo json_encode(['liked' => false]);
+        $liked = false;
     } else {
         $stmt = $pdo->prepare("INSERT IGNORE INTO likes (user_id, song_id) VALUES (?, ?)");
         $stmt->execute([$userId, $songId]);
-        echo json_encode(['liked' => true]);
+        $liked = true;
     }
+    
+    // Recalculate rating after like changes
+    $ratingService->updateSongRating($songId);
+    
+    echo json_encode(['liked' => $liked]);
+    exit();
+}
+
+// RECORD LISTEN (PLAY COUNT)
+if ($resource === 'user' && $id === 'listen' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'error' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $songId = (int) ($input['song_id'] ?? 0);
+    $userId = $_SESSION['user_id'];
+    
+    if ($songId > 0) {
+        // Record in listening history
+        $stmt = $pdo->prepare("INSERT INTO listening_history (user_id, song_id) VALUES (?, ?)");
+        $stmt->execute([$userId, $songId]);
+        
+        // Check if user already viewed this song
+        $stmt = $pdo->prepare("SELECT id FROM song_views WHERE user_id = ? AND song_id = ?");
+        $stmt->execute([$userId, $songId]);
+        
+        if (!$stmt->fetch()) {
+            // First time view - increment plays and record view
+            $stmt = $pdo->prepare("INSERT INTO song_views (user_id, song_id) VALUES (?, ?)");
+            $stmt->execute([$userId, $songId]);
+            
+            $stmt = $pdo->prepare("UPDATE songs SET plays = plays + 1 WHERE id = ?");
+            $stmt->execute([$songId]);
+            
+            // Recalculate rating after play count increases
+            $ratingService->updateSongRating($songId);
+        }
+    }
+    
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// GET LISTENING HISTORY
+if ($resource === 'user' && $id === 'listening-history' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => true, 'songs' => []]);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare(
+        "SELECT s.*, 
+                lh.played_at,
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                COALESCE(s.rating, 0) as rating
+         FROM listening_history lh 
+         JOIN songs s ON lh.song_id = s.id 
+         WHERE lh.user_id = ? 
+         ORDER BY lh.played_at DESC 
+         LIMIT 50"
+    );
+    $stmt->execute([$_SESSION['user_id']]);
+    $history = $stmt->fetchAll();
+    echo json_encode(['success' => true, 'songs' => $history]);
+    exit();
+}
+
+// ============================================
+// RATING API ROUTES
+// ============================================
+
+// Rate a song
+if ($resource === 'song' && $id === 'rate' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $songId = (int) ($input['song_id'] ?? 0);
+    $rating = (int) ($input['rating'] ?? 0);
+    
+    if ($songId <= 0 || $rating < 1 || $rating > 5) {
+        echo json_encode(['success' => false, 'message' => 'Invalid rating (1-5)']);
+        exit();
+    }
+    
+    $result = $ratingService->rateSong($_SESSION['user_id'], $songId, $rating);
+    echo json_encode($result);
+    exit();
+}
+
+// Get user's rating for a song
+if ($resource === 'song' && $id === 'user-rating' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Login required']);
+        exit();
+    }
+    
+    $songId = (int) ($_GET['song_id'] ?? 0);
+    if ($songId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid song ID']);
+        exit();
+    }
+    
+    $rating = $ratingService->getUserRating($_SESSION['user_id'], $songId);
+    echo json_encode(['success' => true, 'rating' => $rating]);
+    exit();
+}
+
+// ============================================
+// PLAYLIST ROUTES
+// ============================================
+
+// GET PLAYLISTS
+if ($resource === 'playlists' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => true, 'playlists' => []]);
+        exit();
+    }
+    
+    if ($sub === 'songs' && $id !== '') {
+        $playlistId = (int) $id;
+        $stmt = $pdo->prepare("
+            SELECT s.*, 
+                   (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count
+            FROM playlist_songs ps 
+            JOIN songs s ON ps.song_id = s.id 
+            WHERE ps.playlist_id = ?
+            ORDER BY ps.created_at
+        ");
+        $stmt->execute([$playlistId]);
+        $songs = $stmt->fetchAll();
+        echo json_encode(['success' => true, 'songs' => $songs]);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare("
+        SELECT p.*, 
+               (SELECT COUNT(*) FROM playlist_songs WHERE playlist_id = p.id) as song_count
+        FROM playlists p 
+        WHERE p.user_id = ?
+        ORDER BY p.created_at DESC
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $playlists = $stmt->fetchAll();
+    echo json_encode(['success' => true, 'playlists' => $playlists]);
+    exit();
+}
+
+// CREATE PLAYLIST
+if ($resource === 'playlists' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'error' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $name = trim($input['name'] ?? $_POST['name'] ?? '');
+    
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'error' => 'Playlist name required']);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO playlists (name, user_id) VALUES (?, ?)");
+    if ($stmt->execute([$name, $_SESSION['user_id']])) {
+        echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Failed to create playlist']);
+    }
+    exit();
+}
+
+// ADD SONG TO PLAYLIST
+if ($resource === 'playlist' && $id === 'add-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'error' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $playlistId = (int) ($input['playlist_id'] ?? 0);
+    $songId = (int) ($input['song_id'] ?? 0);
+    
+    // Verify playlist belongs to user
+    $stmt = $pdo->prepare("SELECT id FROM playlists WHERE id = ? AND user_id = ?");
+    $stmt->execute([$playlistId, $_SESSION['user_id']]);
+    if (!$stmt->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Playlist not found']);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare("INSERT IGNORE INTO playlist_songs (playlist_id, song_id) VALUES (?, ?)");
+    if ($stmt->execute([$playlistId, $songId])) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Failed to add song']);
+    }
+    exit();
+}
+
+// ============================================
+// ADMIN ROUTES
+// ============================================
+
+// Get pending musicians
+if ($resource === 'admin' && $id === 'pending-musicians' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $musicians = $userModel->getPendingMusicians();
+    echo json_encode(['success' => true, 'musicians' => $musicians]);
+    exit();
+}
+
+// Get all users
+if ($resource === 'admin' && $id === 'users' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $users = $userModel->getAllUsers();
+    echo json_encode(['success' => true, 'users' => $users]);
+    exit();
+}
+
+// Approve musician
+if ($resource === 'admin' && $id === 'approve-musician' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $userId = $input['user_id'] ?? $_POST['user_id'] ?? 0;
+    $userModel->approveUser($userId);
+    echo json_encode(['success' => true, 'message' => 'Musician approved']);
+    exit();
+}
+
+// Update user role
+if ($resource === 'admin' && $id === 'update-role' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $userId = $input['user_id'] ?? 0;
+    $role = $input['role'] ?? '';
+    $userModel->updateRole($userId, $role);
+    echo json_encode(['success' => true]);
     exit();
 }
 

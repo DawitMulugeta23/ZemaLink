@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../context/PlayerContext";
 import { DEFAULT_COVER } from "../constants";
-import { songService } from "../services/songService";
-import SongCard from "../components/music/SongCard";
 
 function Player() {
   const navigate = useNavigate();
@@ -20,19 +18,17 @@ function Player() {
     seekTo,
     mediaRef,
     playSong,
+    queue,
+    relatedSongs,
+    addToQueue,
+    removeFromQueue,
+    clearQueue,
   } = usePlayer();
 
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
-  const [relatedSongs, setRelatedSongs] = useState([]);
-  const [loadingRelated, setLoadingRelated] = useState(false);
-
-  useEffect(() => {
-    if (!currentSong) {
-      navigate("/browse");
-      return;
-    }
-  }, [currentSong, navigate]);
+  const [showQueue, setShowQueue] = useState(false);
+  const [autoPlayNext, setAutoPlayNext] = useState(true);
 
   useEffect(() => {
     if (mediaRef.current) {
@@ -40,44 +36,12 @@ function Player() {
     }
   }, [volume, mediaRef]);
 
-  // Load related songs when current song changes
   useEffect(() => {
-    const loadRelatedSongs = async () => {
-      if (!currentSong) return;
-      
-      setLoadingRelated(true);
-      try {
-        const songs = await songService.getSongs();
-        
-        // Filter related songs: same artist or same genre, exclude current song
-        const related = songs.filter(song => 
-          song.id !== currentSong.id && (
-            (song.artist && currentSong.artist && 
-             song.artist.toLowerCase() === currentSong.artist.toLowerCase()) ||
-            (song.genre && currentSong.genre && 
-             song.genre.toLowerCase() === currentSong.genre.toLowerCase())
-          )
-        ).slice(0, 8);
-        
-        // If not enough related songs, add any approved songs
-        if (related.length < 4) {
-          const moreSongs = songs.filter(song => 
-            song.id !== currentSong.id && 
-            !related.find(r => r.id === song.id)
-          ).slice(0, 8 - related.length);
-          setRelatedSongs([...related, ...moreSongs]);
-        } else {
-          setRelatedSongs(related);
-        }
-      } catch (error) {
-        console.error("Error loading related songs:", error);
-      } finally {
-        setLoadingRelated(false);
-      }
-    };
-    
-    loadRelatedSongs();
-  }, [currentSong]);
+    if (!currentSong) {
+      navigate("/browse");
+      return;
+    }
+  }, [currentSong, navigate]);
 
   const handleSeek = (e) => {
     const seekTime = (e.target.value / 100) * duration;
@@ -265,63 +229,160 @@ function Player() {
           </div>
         </div>
 
-        {/* Right Column - Related Music */}
+        {/* Right Column - Related Music & Queue */}
         <div className="lg:col-span-1">
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 sticky top-24">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <span className="text-2xl">🎵</span>
-              Related Music
-            </h2>
-            
-            {loadingRelated ? (
-              <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-3 border-white/20 border-t-red-500 rounded-full animate-spin"></div>
-              </div>
-            ) : relatedSongs.length === 0 ? (
-              <p className="text-white/40 text-center py-8">
-                No related songs found
-              </p>
-            ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scroll">
-                {relatedSongs.map((song) => (
-                  <div
-                    key={song.id}
-                    onClick={() => playSong(song)}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer group"
-                  >
-                    <img
-                      src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
-                      alt={song.title}
-                      className="w-12 h-12 rounded-lg object-cover"
-                      onError={(e) => {
-                        e.target.src = DEFAULT_COVER;
-                      }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate text-sm">
-                        {song.title}
-                      </p>
-                      <p className="text-white/40 text-xs truncate">
-                        {song.artist}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleLike(song.id);
-                      }}
-                      className="text-lg opacity-0 group-hover:opacity-100 transition"
-                    >
-                      {likedSongs?.some((s) => s.id === song.id) ? "❤️" : "🤍"}
-                    </button>
-                    <div className="text-white/30 text-sm">
-                      ▶
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Toggle between Related and Queue */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setShowQueue(false)}
+              className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition ${
+                !showQueue 
+                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white" 
+                  : "bg-white/10 text-white/60 hover:text-white"
+              }`}
+            >
+              🎵 Related {relatedSongs.length > 0 && `(${relatedSongs.length})`}
+            </button>
+            <button
+              onClick={() => setShowQueue(true)}
+              className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition ${
+                showQueue 
+                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white" 
+                  : "bg-white/10 text-white/60 hover:text-white"
+              }`}
+            >
+              📋 Queue {queue.length > 0 && `(${queue.length})`}
+            </button>
           </div>
+
+          {/* Related Music Panel */}
+          {!showQueue && (
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 sticky top-24">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <span className="text-2xl">🎵</span>
+                Up Next
+              </h2>
+              
+              {relatedSongs.length === 0 ? (
+                <p className="text-white/40 text-center py-8">
+                  No related songs found
+                </p>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scroll">
+                  {relatedSongs.map((song, index) => (
+                    <div
+                      key={song.id}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer group"
+                      onClick={() => {
+                        // Play this song and set remaining as next
+                        const remaining = relatedSongs.slice(index + 1);
+                        // TODO: Update context to set remaining as next
+                        playSong(song);
+                      }}
+                    >
+                      <div className="text-white/40 text-sm w-6">
+                        {index === 0 ? "▶" : index + 1}
+                      </div>
+                      <img
+                        src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
+                        alt={song.title}
+                        className="w-10 h-10 rounded-lg object-cover"
+                        onError={(e) => {
+                          e.target.src = DEFAULT_COVER;
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate text-sm">
+                          {song.title}
+                        </p>
+                        <p className="text-white/40 text-xs truncate">
+                          {song.artist}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToQueue(song);
+                        }}
+                        className="text-white/30 hover:text-white/70 text-sm transition"
+                        title="Add to queue"
+                      >
+                        📋
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Queue Panel */}
+          {showQueue && (
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 sticky top-24">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span className="text-2xl">📋</span>
+                  Queue
+                </h2>
+                {queue.length > 0 && (
+                  <button
+                    onClick={clearQueue}
+                    className="text-xs text-white/50 hover:text-red-400 transition"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+              
+              {queue.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-white/40 text-sm mb-2">Queue is empty</p>
+                  <p className="text-white/30 text-xs">Click the 📋 button on any song to add to queue</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scroll">
+                  {queue.map((song, index) => (
+                    <div
+                      key={song.id + index}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group"
+                    >
+                      <div className="text-white/40 text-sm w-6">
+                        {index === 0 ? "▶" : index + 1}
+                      </div>
+                      <img
+                        src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
+                        alt={song.title}
+                        className="w-10 h-10 rounded-lg object-cover"
+                        onError={(e) => {
+                          e.target.src = DEFAULT_COVER;
+                        }}
+                      />
+                      <div className="flex-1 min-w-0" onClick={() => {
+                        // Play this song and remove previous queue items
+                        const remaining = queue.slice(index + 1);
+                        // TODO: Update context to set remaining as queue
+                        playSong(song);
+                      }}>
+                        <p className="text-white font-medium truncate text-sm">
+                          {song.title}
+                        </p>
+                        <p className="text-white/40 text-xs truncate">
+                          {song.artist}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeFromQueue(song.id)}
+                        className="text-white/30 hover:text-red-400 text-sm transition"
+                        title="Remove from queue"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

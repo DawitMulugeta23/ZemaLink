@@ -5,6 +5,7 @@ import { usePlayer } from "../../context/PlayerContext";
 import { DEFAULT_COVER } from "../../constants";
 import PremiumBadge from "./PremiumBadge";
 import { songService } from "../../services/songService";
+import RatingStars from "./RatingStars";
 
 function SongCard({ song, onAccessGranted }) {
   const navigate = useNavigate();
@@ -27,9 +28,7 @@ function SongCard({ song, onAccessGranted }) {
       navigate(`/pro-deal?songId=${song.id}`);
       return;
     }
-    // First set the current song in player context
     playSong(song);
-    // Then navigate to player page
     navigate("/player");
   };
 
@@ -112,17 +111,22 @@ function SongCard({ song, onAccessGranted }) {
 
       <div className="mt-auto flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-[11px] font-medium tabular-nums text-white/50 ring-1 ring-white/5">
         <span className="inline-flex items-center gap-1">
-          <span className="text-red-300/90" aria-hidden>
-            ♥
-          </span>
+          <span className="text-red-300/90" aria-hidden>❤️</span>
           <span>{song?.likes_count ?? 0}</span>
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="text-emerald-300/80" aria-hidden>
-            ▶
-          </span>
-          <span>{song?.plays ?? 0}</span>
+          <span className="text-emerald-300/80" aria-hidden>👁️</span>
+          <span>{song?.plays?.toLocaleString() ?? 0}</span>
         </span>
+      </div>
+
+      <div className="mt-2">
+        <RatingStars 
+          songId={song.id} 
+          rating={song?.rating || 0}
+          likesCount={song?.likes_count || 0}
+          playsCount={song?.plays || 0}
+        />
       </div>
 
       {user ? (

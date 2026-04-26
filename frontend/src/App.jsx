@@ -4,7 +4,6 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
-import MusicPlayer from "./components/music/MusicPlayer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { PlayerProvider } from "./context/PlayerContext";
@@ -23,7 +22,7 @@ import Purchased from "./pages/Purchased";
 import Register from "./pages/Register";
 import Subscription from "./pages/Subscription";
 import VerifyEmail from "./pages/VerifyEmail";
-import Player from "./pages/Player";  // Add this import
+import Player from "./pages/Player";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -55,7 +54,7 @@ function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/verify-email" element={<VerifyEmail />} />
                     <Route path="/" element={<Home />} />
-                    <Route path="/player" element={<Player />} />  {/* Add this route */}
+                    <Route path="/player" element={<Player />} />
                     <Route path="/browse" element={<Browse />} />
                     <Route path="/library" element={<Library />} />
                     <Route path="/playlist/:id" element={<Playlist />} />
@@ -112,7 +111,6 @@ function App() {
                   </Routes>
                 </main>
               </div>
-              <MusicPlayer />
               <ToastContainer position="top-right" autoClose={3000} theme="dark" />
             </div>
           </div>
