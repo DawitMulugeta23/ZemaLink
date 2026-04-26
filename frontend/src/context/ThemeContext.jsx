@@ -4,9 +4,7 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    // Check localStorage first
     const savedTheme = localStorage.getItem("theme");
-    // Check system preference
     if (!savedTheme) {
       return window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
@@ -16,7 +14,6 @@ export function ThemeProvider({ children }) {
   });
 
   useEffect(() => {
-    // Update document class
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
       document.documentElement.classList.remove("light");
@@ -24,7 +21,6 @@ export function ThemeProvider({ children }) {
       document.documentElement.classList.add("light");
       document.documentElement.classList.remove("dark");
     }
-    // Save to localStorage
     localStorage.setItem("theme", theme);
   }, [theme]);
 

@@ -23,6 +23,7 @@ import Register from "./pages/Register";
 import Subscription from "./pages/Subscription";
 import VerifyEmail from "./pages/VerifyEmail";
 import Player from "./pages/Player";
+import Settings from "./pages/Settings";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -59,6 +60,7 @@ function App() {
                     <Route path="/library" element={<Library />} />
                     <Route path="/playlist/:id" element={<Playlist />} />
                     <Route path="/premium" element={<Premium />} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route
                       path="/pro-deal"
                       element={
