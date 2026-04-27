@@ -24,11 +24,15 @@ function mapSong(s) {
     ...s,
     file_path: filePath,
     media_type: s.media_type || inferMediaType(filePath),
-    cover_image:
-      s.cover_image && s.cover_image !== "null"
-        ? resolveMediaUrl(s.cover_image)
-        : s.cover_image,
+    cover_image: s.cover_image && s.cover_image !== "null"
+      ? resolveMediaUrl(s.cover_image)
+      : s.cover_image,
     can_play: s.can_play !== false,
+    rating: parseFloat(s.rating) || 0,
+    plays: parseInt(s.plays) || 0,
+    likes_count: parseInt(s.likes_count) || 0,
+    is_premium: s.is_premium == 1 || s.is_premium === "1",
+    price: parseFloat(s.price) || 0
   };
 }
 
@@ -83,16 +87,6 @@ export const songService = {
     return await api.postForm("user/like", formData);
   },
 
-  rateSong: async (songId, rating) => {
-    const response = await api.post("song/rate", { song_id: songId, rating });
-    return response;
-  },
-
-  getUserRating: async (songId) => {
-    const response = await api.get(`song/user-rating?song_id=${songId}`);
-    return response;
-  },
-
   getPlaylists: async () => {
     const response = await api.get("playlists");
     if (response.success && Array.isArray(response.playlists)) {
@@ -145,20 +139,6 @@ export const songService = {
 
   purchaseSong: async (songId) => {
     return await api.post("payment/purchase-song", { song_id: songId });
-  },
-
-  initiateSongPayment: async (songId, returnUrl) => {
-    return await api.post("payment/initiate-song", {
-      song_id: songId,
-      return_url: returnUrl,
-    });
-  },
-
-  verifySongPayment: async (songId, txRef) => {
-    return await api.post("payment/verify-song", {
-      song_id: songId || 0,
-      tx_ref: txRef,
-    });
   },
 
   reportSong: async (songId, reason) => {

@@ -17,17 +17,25 @@ function SongCard({ song, onAccessGranted }) {
       ? song.cover_image
       : DEFAULT_COVER;
 
-  const locked = !!song?.is_premium && song?.can_play === false;
+  // Check if song is premium and user hasn't purchased it
+  const isPremium = song?.is_premium === 1;
+  const hasAccess = song?.can_play !== false;
+  const locked = isPremium && !hasAccess;
 
-  const handleCardClick = () => {
-    if (locked) {
+  const handleCardClick = async () => {
+    // Check if song is premium and needs purchase
+    if (isPremium && !hasAccess) {
       if (!user) {
         toast.info("Please log in to purchase this track.");
+        navigate("/login");
         return;
       }
+      // Redirect to pro-deal page for payment
       navigate(`/pro-deal?songId=${song.id}`);
       return;
     }
+    
+    // Free song or already purchased - play it
     playSong(song);
     navigate("/player");
   };

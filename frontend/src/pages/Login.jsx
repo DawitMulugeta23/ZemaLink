@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/authService";
 
 function Login() {
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/";
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -62,11 +65,11 @@ function Login() {
     setLoading(false);
 
     if (result.success) {
-      navigate("/");
+      navigate(redirectUrl);
     } else {
       if (result.requiresVerification) {
         navigate(
-          `/verify-email?email=${encodeURIComponent(result.verificationEmail || email)}`,
+          `/verify-email?email=${encodeURIComponent(result.verificationEmail || email)}&redirect=${encodeURIComponent(redirectUrl)}`,
         );
         return;
       }
@@ -190,6 +193,15 @@ function Login() {
             </Link>
           </p>
         </div>
+
+        {/* Show redirect info if coming from premium purchase */}
+        {redirectUrl !== "/" && redirectUrl.includes("pro-deal") && (
+          <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <p className="text-xs text-amber-300/80 text-center">
+              🔒 After login, you'll be redirected to complete your premium purchase.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -88,9 +88,11 @@ require_once __DIR__ . '/integrations.php';
 require_once __DIR__ . '/models/User.php';
 require_once __DIR__ . '/platform_routes.php';
 require_once __DIR__ . '/services/RatingService.php';
+require_once __DIR__ . '/services/ChapaService.php';
 
 $userModel = new User($pdo);
 $ratingService = new RatingService($pdo);
+$chapaService = new ChapaService();
 
 // ============================================
 // Helper functions
@@ -202,6 +204,11 @@ if ($resource === 'auth' && $id === 'register' && $_SERVER['REQUEST_METHOD'] ===
     );
     
     if ($stmt->execute([$name, $email, $hashed, $role, $isApproved, $emailVerified, $verificationCode, $verificationExpires])) {
+        // Send verification email
+        if (!$emailVerified && $verificationCode) {
+            zemalink_send_verification_email($email, $name, $verificationCode);
+        }
+        
         $registerMessage = $emailVerified
             ? ($role === 'musician' ? 'Registration successful! Your account is pending approval.' : 'Registration successful!')
             : 'Registration successful! Enter the 6-digit code sent to your email.';
@@ -383,6 +390,9 @@ if ($resource === 'auth' && $id === 'resend-code' && $_SERVER['REQUEST_METHOD'] 
     $pdo->prepare("UPDATE users SET email_verification_code = ?, email_verification_expires = ? WHERE id = ?")
         ->execute([$code, $expires, $user['id']]);
     
+    // Send new verification email
+    zemalink_send_verification_email($email, $user['name'], $code);
+    
     echo json_encode([
         'success' => true,
         'message' => 'A new verification code has been sent',
@@ -557,8 +567,105 @@ if ($resource === 'user' && $id === 'listening-history' && $_SERVER['REQUEST_MET
 // RATING API ROUTES
 // ============================================
 
-// Rate a song
-if ($resource === 'song' && $id === 'rate' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// Get song rating breakdown
+if ($resource === 'song' && $id === 'rating-breakdown' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $songId = (int) ($_GET['song_id'] ?? 0);
+    if ($songId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid song ID']);
+        exit();
+    }
+    
+    $breakdown = $ratingService->getRatingBreakdown($songId);
+    echo json_encode(['success' => true, 'data' => $breakdown]);
+    exit();
+}
+
+// ============================================
+// CHAPA PAYMENT ROUTES
+// ============================================
+
+// Initialize payment for subscription
+if ($resource === 'payment' && $id === 'initiate-subscription' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $plan = $input['plan'] ?? 'monthly';
+    
+    // Get user details
+    $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch();
+    
+    $amount = $plan === 'yearly' ? 99.00 : 9.99;
+    $tx_ref = 'SUB_' . $_SESSION['user_id'] . '_' . time();
+    $callbackUrl = zemalink_env('APP_BASE_URL', 'http://localhost:8000') . '/payment/verify-subscription';
+    $returnUrl = zemalink_env('APP_FRONTEND_URL', 'http://localhost:5173') . '/subscription?status=success';
+    
+    $paymentData = [
+        'amount' => $amount,
+        'email' => $user['email'],
+        'first_name' => explode(' ', $user['name'])[0],
+        'last_name' => explode(' ', $user['name'])[1] ?? '',
+        'tx_ref' => $tx_ref,
+        'callback_url' => $callbackUrl,
+        'return_url' => $returnUrl,
+        'title' => 'ZemaLink Premium Subscription',
+        'description' => ucfirst($plan) . ' subscription plan'
+    ];
+    
+    $result = $chapaService->initializePayment($paymentData);
+    echo json_encode($result);
+    exit();
+}
+
+// Verify subscription payment
+if ($resource === 'payment' && $id === 'verify-subscription' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $tx_ref = $_GET['tx_ref'] ?? '';
+    
+    if (empty($tx_ref)) {
+        echo json_encode(['success' => false, 'message' => 'Transaction reference required']);
+        exit();
+    }
+    
+    $result = $chapaService->verifyPayment($tx_ref);
+    
+    if ($result['success']) {
+        // Extract user ID from tx_ref (format: SUB_{user_id}_{timestamp})
+        preg_match('/SUB_(\d+)_/', $tx_ref, $matches);
+        $userId = $matches[1] ?? 0;
+        
+        if ($userId) {
+            $plan = strpos($tx_ref, 'yearly') !== false ? 'yearly' : 'monthly';
+            $months = $plan === 'yearly' ? 12 : 1;
+            $expires = date('Y-m-d', strtotime("+{$months} months"));
+            
+            $stmt = $pdo->prepare("UPDATE users SET subscription = 'premium', subscription_expires = ? WHERE id = ?");
+            $stmt->execute([$expires, $userId]);
+            
+            // Record payment
+            $amount = $plan === 'yearly' ? 99.00 : 9.99;
+            $stmt = $pdo->prepare("INSERT INTO payments (user_id, amount, payment_type, status) VALUES (?, ?, 'subscription', 'completed')");
+            $stmt->execute([$userId, $amount]);
+            
+            // Send confirmation email
+            $userStmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+            $userStmt->execute([$userId]);
+            $user = $userStmt->fetch();
+            zemalink_send_payment_email($user['email'], $user['name'], 'Premium Subscription', $amount);
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Subscription activated']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Payment verification failed']);
+    }
+    exit();
+}
+
+// Initialize payment for song purchase
+if ($resource === 'payment' && $id === 'initiate-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => false, 'message' => 'Login required']);
         exit();
@@ -566,33 +673,86 @@ if ($resource === 'song' && $id === 'rate' && $_SERVER['REQUEST_METHOD'] === 'PO
     
     $input = getInputData();
     $songId = (int) ($input['song_id'] ?? 0);
-    $rating = (int) ($input['rating'] ?? 0);
     
-    if ($songId <= 0 || $rating < 1 || $rating > 5) {
-        echo json_encode(['success' => false, 'message' => 'Invalid rating (1-5)']);
+    // Get song details
+    $stmt = $pdo->prepare("SELECT title, artist, price FROM songs WHERE id = ? AND is_premium = 1");
+    $stmt->execute([$songId]);
+    $song = $stmt->fetch();
+    
+    if (!$song) {
+        echo json_encode(['success' => false, 'message' => 'Song not found']);
         exit();
     }
     
-    $result = $ratingService->rateSong($_SESSION['user_id'], $songId, $rating);
+    // Get user details
+    $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch();
+    
+    $amount = (float) ($song['price'] > 0 ? $song['price'] : 0.99);
+    $tx_ref = 'SONG_' . $_SESSION['user_id'] . '_' . $songId . '_' . time();
+    $callbackUrl = zemalink_env('APP_BASE_URL', 'http://localhost:8000') . '/payment/verify-song';
+    $returnUrl = zemalink_env('APP_FRONTEND_URL', 'http://localhost:5173') . '/pro-deal?songId=' . $songId . '&status=success';
+    
+    $paymentData = [
+        'amount' => $amount,
+        'email' => $user['email'],
+        'first_name' => explode(' ', $user['name'])[0],
+        'last_name' => explode(' ', $user['name'])[1] ?? '',
+        'tx_ref' => $tx_ref,
+        'callback_url' => $callbackUrl,
+        'return_url' => $returnUrl,
+        'title' => 'ZemaLink Song Purchase',
+        'description' => $song['title'] . ' - ' . $song['artist']
+    ];
+    
+    $result = $chapaService->initializePayment($paymentData);
     echo json_encode($result);
     exit();
 }
 
-// Get user's rating for a song
-if ($resource === 'song' && $id === 'user-rating' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (!isset($_SESSION['user_id'])) {
-        echo json_encode(['success' => false, 'message' => 'Login required']);
+// Verify song payment
+if ($resource === 'payment' && $id === 'verify-song' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $tx_ref = $_GET['tx_ref'] ?? '';
+    
+    if (empty($tx_ref)) {
+        echo json_encode(['success' => false, 'message' => 'Transaction reference required']);
         exit();
     }
     
-    $songId = (int) ($_GET['song_id'] ?? 0);
-    if ($songId <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid song ID']);
-        exit();
-    }
+    $result = $chapaService->verifyPayment($tx_ref);
     
-    $rating = $ratingService->getUserRating($_SESSION['user_id'], $songId);
-    echo json_encode(['success' => true, 'rating' => $rating]);
+    if ($result['success']) {
+        // Extract user ID and song ID from tx_ref (format: SONG_{user_id}_{song_id}_{timestamp})
+        preg_match('/SONG_(\d+)_(\d+)_/', $tx_ref, $matches);
+        $userId = $matches[1] ?? 0;
+        $songId = $matches[2] ?? 0;
+        
+        if ($userId && $songId) {
+            $amount = $result['data']['data']['amount'] ?? 0;
+            
+            // Record purchase
+            $stmt = $pdo->prepare("INSERT INTO payments (user_id, song_id, amount, payment_type, status) VALUES (?, ?, ?, 'song', 'completed')");
+            $stmt->execute([$userId, $songId, $amount]);
+            $paymentId = $pdo->lastInsertId();
+            
+            $stmt = $pdo->prepare("INSERT INTO user_purchases (user_id, song_id, payment_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE payment_id = VALUES(payment_id)");
+            $stmt->execute([$userId, $songId, $paymentId]);
+            
+            // Send confirmation email
+            $userStmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+            $userStmt->execute([$userId]);
+            $user = $userStmt->fetch();
+            $songStmt = $pdo->prepare("SELECT title FROM songs WHERE id = ?");
+            $songStmt->execute([$songId]);
+            $song = $songStmt->fetch();
+            zemalink_send_payment_email($user['email'], $user['name'], 'Song: ' . $song['title'], $amount);
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Song purchased successfully']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Payment verification failed']);
+    }
     exit();
 }
 
