@@ -55,7 +55,7 @@ function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/verify-email" element={<VerifyEmail />} />
                     <Route path="/" element={<Home />} />
-                    <Route path="/player" element={<Player />} />
+                    <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
                     <Route path="/browse" element={<Browse />} />
                     <Route path="/library" element={<Library />} />
                     <Route path="/playlist/:id" element={<Playlist />} />

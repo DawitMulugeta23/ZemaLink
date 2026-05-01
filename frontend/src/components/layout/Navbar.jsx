@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import UserMenu from "./UserMenu";
-import ThemeToggle from "./ThemeToggle";
 
 function Navbar() {
   const { user } = useAuth();
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
     { path: "/", name: "Home", icon: "🏠" },
@@ -55,13 +56,82 @@ function Navbar() {
             </div>
           </div>
 
-          {/* Right Section - Theme Toggle & User Menu */}
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <UserMenu />
+          {/* Mobile menu button */}
+          <div className="flex items-center gap-2 md:hidden">
+            <button
+              type="button"
+              aria-expanded={mobileOpen}
+              aria-label="Toggle navigation menu"
+              onClick={() => setMobileOpen((prev) => !prev)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white hover:bg-white/10 transition"
+            >
+              <span className="text-xl">{mobileOpen ? "✕" : "☰"}</span>
+            </button>
+          </div>
+
+          {/* Right Section - User Menu or Auth Links */}
+          <div className="hidden md:flex items-center gap-2">
+            {user ? (
+              <UserMenu />
+            ) : (
+              <Link
+                to="/register"
+                className="rounded-full bg-gradient-to-r from-red-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:opacity-95 transition"
+              >
+                Get Started
+              </Link>
+            )}
           </div>
         </div>
       </div>
+
+      {mobileOpen && (
+        <div className="md:hidden border-t border-white/10 bg-black/90 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-4 py-4 space-y-3 sm:px-6">
+            <div className="flex flex-col gap-2">
+              {navLinks.map(
+                (link) =>
+                  link.show !== false && (
+                    <Link
+                      key={link.path}
+                      to={link.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                        isActive(link.path)
+                          ? "bg-red-500/15 text-white"
+                          : "text-white/70 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {link.icon} {link.name}
+                    </Link>
+                  )
+              )}
+            </div>
+            <Link
+              to="/subscription"
+              onClick={() => setMobileOpen(false)}
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 text-sm font-semibold text-white shadow-lg"
+            >
+              ⭐ Premium
+            </Link>
+            {user ? (
+              <div className="pt-4 border-t border-white/10">
+                <UserMenu />
+              </div>
+            ) : (
+              <div className="space-y-2 pt-4 border-t border-white/10">
+                <Link
+                  to="/register"
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-2xl bg-gradient-to-r from-red-500 to-pink-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg hover:opacity-95 transition"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

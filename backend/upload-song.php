@@ -24,6 +24,9 @@ if (!$input) {
 $title = $input['title'] ?? '';
 $artist = $input['artist'] ?? '';
 $album = $input['album'] ?? '';
+$genre = $input['genre'] ?? '';
+$description = $input['description'] ?? '';
+$lyrics = $input['lyrics'] ?? '';
 $duration = $input['audio_duration'] ?? 0;
 $audioUrl = $input['audio_url'] ?? '';
 $audioPublicId = $input['audio_public_id'] ?? '';
@@ -39,13 +42,13 @@ if (empty($title) || empty($artist) || empty($audioUrl)) {
 }
 
 $stmt = $pdo->prepare("
-    INSERT INTO songs (title, artist, album, duration, file_path, cover_image, 
+    INSERT INTO songs (title, artist, album, genre, description, lyrics, duration, file_path, cover_image, 
                       cloudinary_public_id, cloudinary_cover_id, is_premium, price, uploaded_by) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ");
 
 $result = $stmt->execute([
-    $title, $artist, $album, $duration, $audioUrl, $coverUrl,
+    $title, $artist, $album, $genre, $description, $lyrics, $duration, $audioUrl, $coverUrl,
     $audioPublicId, $coverPublicId, $isPremium, $price, $userId
 ]);
 

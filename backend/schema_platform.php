@@ -45,7 +45,7 @@ function ensure_platform_schema(PDO $pdo): void {
             $pdo->exec('ALTER TABLE songs ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0');
         }
         if (!$col('songs', 'is_approved')) {
-            $pdo->exec('ALTER TABLE songs ADD COLUMN is_approved TINYINT(1) NOT NULL DEFAULT 1');
+            $pdo->exec('ALTER TABLE songs ADD COLUMN is_approved TINYINT(1) NOT NULL DEFAULT 0');
         }
         if (!$col('songs', 'featured')) {
             $pdo->exec('ALTER TABLE songs ADD COLUMN featured TINYINT(1) NOT NULL DEFAULT 0');
@@ -53,6 +53,13 @@ function ensure_platform_schema(PDO $pdo): void {
         if (!$col('songs', 'genre')) {
             $pdo->exec("ALTER TABLE songs ADD COLUMN genre VARCHAR(60) NULL");
         }
+        if (!$col('songs', 'media_type')) {
+            $pdo->exec("ALTER TABLE songs ADD COLUMN media_type VARCHAR(20) DEFAULT 'audio'");
+        }
+        if (!$col('songs', 'rating')) {
+            $pdo->exec("ALTER TABLE songs ADD COLUMN rating DECIMAL(3,1) DEFAULT 0");
+        }
+        
         // Compatibility: some DBs use uploaded_by, others use uploader_id.
         if (!$col('songs', 'uploader_id') && $col('songs', 'uploaded_by')) {
             $pdo->exec('ALTER TABLE songs ADD COLUMN uploader_id INT NULL');

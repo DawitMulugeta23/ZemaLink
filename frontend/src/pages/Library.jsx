@@ -11,6 +11,9 @@ function Library() {
   const [activeTab, setActiveTab] = useState("liked");
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [playlistName, setPlaylistName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const loadLibrary = async () => {
     setLoading(true);
@@ -27,6 +30,30 @@ function Library() {
       console.error("Error loading library:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreatePlaylist = async (e) => {
+    e.preventDefault();
+    if (!playlistName.trim()) return;
+
+    setCreating(true);
+    try {
+      const result = await songService.createPlaylist(playlistName.trim());
+      if (result.success) {
+        setPlaylistName("");
+        setShowCreateModal(false);
+        // Refresh playlists
+        const playlistsData = await songService.getPlaylists();
+        setPlaylists(playlistsData.playlists || []);
+      } else {
+        alert("Failed to create playlist: " + (result.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error creating playlist:", error);
+      alert("Failed to create playlist");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -140,7 +167,10 @@ function Library() {
       {/* Playlists Tab */}
       {activeTab === "playlists" && (
         <>
-          <button className="mb-6 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm hover:bg-white/20 transition">
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="mb-6 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm hover:bg-white/20 transition"
+          >
             + Create New Playlist
           </button>
           {playlists.length === 0 ? (
@@ -167,6 +197,58 @@ function Library() {
               ))}
             </div>
           )}
+        </>
+      )}
+      
+      {/* Create Playlist Modal */}
+      {showCreateModal && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-50"
+            onClick={() => setShowCreateModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 w-full max-w-md z-50">
+            <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+              Create New Playlist
+            </h2>
+            
+            <form onSubmit={handleCreatePlaylist}>
+              <div className="mb-4">
+                <label htmlFor="playlistName" className="block text-sm font-medium text-white/80 mb-2">
+                  Playlist Name
+                </label>
+                <input
+                  type="text"
+                  id="playlistName"
+                  value={playlistName}
+                  onChange={(e) => setPlaylistName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-red-400"
+                  placeholder="Enter playlist name..."
+                  required
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white/80 hover:bg-white/20 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !playlistName.trim()}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg text-white font-medium hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
         </>
       )}
     </div>

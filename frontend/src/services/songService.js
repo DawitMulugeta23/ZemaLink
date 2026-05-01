@@ -28,6 +28,7 @@ function mapSong(s) {
       ? resolveMediaUrl(s.cover_image)
       : s.cover_image,
     can_play: s.can_play !== false,
+    requires_purchase: s.requires_purchase === true,
     rating: parseFloat(s.rating) || 0,
     plays: parseInt(s.plays) || 0,
     likes_count: parseInt(s.likes_count) || 0,
@@ -38,15 +39,8 @@ function mapSong(s) {
 
 export const songService = {
   search: async (query) => {
-    const all = await songService.getSongs();
-    const q = String(query).toLowerCase().trim();
-    if (!q) return all;
-    return all.filter(
-      (s) =>
-        s.title?.toLowerCase().includes(q) ||
-        s.artist?.toLowerCase().includes(q) ||
-        (s.album && s.album.toLowerCase().includes(q)),
-    );
+    const response = await api.get(`/songs?search=${encodeURIComponent(query)}`);
+    return response.data?.data || [];
   },
 
   getSongs: async () => {
@@ -55,6 +49,14 @@ export const songService = {
       return response.songs.map(mapSong);
     }
     return [];
+  },
+
+  getSong: async (id) => {
+    const response = await api.get(`song/${id}`);
+    if (response.success && response.data) {
+      return mapSong(response.data);
+    }
+    return null;
   },
 
   getTrending: async () => {

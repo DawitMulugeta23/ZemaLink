@@ -86,13 +86,17 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/schema_platform.php';
 require_once __DIR__ . '/integrations.php';
 require_once __DIR__ . '/models/User.php';
+require_once __DIR__ . '/models/Song.php';
 require_once __DIR__ . '/platform_routes.php';
 require_once __DIR__ . '/services/RatingService.php';
 require_once __DIR__ . '/services/ChapaService.php';
+require_once __DIR__ . '/services/AIService.php';
 
 $userModel = new User($pdo);
 $ratingService = new RatingService($pdo);
 $chapaService = new ChapaService();
+$aiService = new AIService();
+$songModel = new Song($pdo);
 
 // ============================================
 // Helper functions
@@ -159,6 +163,122 @@ $id = $segments[1] ?? '';
 $sub = $segments[2] ?? '';
 
 // ============================================
+// AI-POWERED SEARCH ENDPOINTS (PRIORITY)
+// ============================================
+
+// GET /search - Main search endpoint with context
+if ($resource === 'search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $query = trim($_GET['q'] ?? $_GET['query'] ?? '');
+    $type = $_GET['type'] ?? 'songs';
+    
+    if (empty($query)) {
+        echo json_encode(['success' => false, 'message' => 'Search query required']);
+        exit();
+    }
+    
+    try {
+        $userId = $_SESSION['user_id'] ?? null;
+        
+        if ($type === 'suggestions') {
+            $suggestions = $songModel->getSearchSuggestions($query, $userId);
+            echo json_encode([
+                'success' => true,
+                'suggestions' => $suggestions,
+                'query' => $query
+            ]);
+            exit();
+        }
+        
+        $results = $aiService->intelligentSearch($query, $userId, 50);
+        
+        $userContext = [];
+        if ($userId) {
+            $stmt = $pdo->prepare("
+                SELECT DISTINCT s.genre 
+                FROM listening_history lh 
+                JOIN songs s ON lh.song_id = s.id 
+                WHERE lh.user_id = ? AND s.genre IS NOT NULL AND s.genre != ''
+                GROUP BY s.genre 
+                ORDER BY COUNT(*) DESC 
+                LIMIT 3
+            ");
+            $stmt->execute([$userId]);
+            $userContext['recent_genres'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+        
+        $interpretation = $aiService->interpretSearchQuery($query, $userContext);
+        
+        echo json_encode([
+            'success' => true,
+            'data' => $results,
+            'count' => count($results),
+            'query' => $query,
+            'interpretation' => $interpretation,
+            'ai_powered' => !$aiService->useMockData
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("AI Search failed: " . $e->getMessage());
+        
+        $results = $songModel->search($query);
+        
+        echo json_encode([
+            'success' => true,
+            'data' => $results,
+            'count' => count($results),
+            'query' => $query,
+            'fallback' => true,
+            'error' => $e->getMessage()
+        ]);
+    }
+    exit();
+}
+
+// GET /search/trending - Get trending searches
+if ($resource === 'search' && $id === 'trending' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    try {
+        $stmt = $pdo->query("
+            SELECT search_query, COUNT(*) as search_count 
+            FROM search_history 
+            WHERE searched_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+            GROUP BY search_query 
+            ORDER BY search_count DESC 
+            LIMIT 10
+        ");
+        $trending = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        $trending = [];
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'trending' => $trending
+    ]);
+    exit();
+}
+
+// POST /search/track - Track search for analytics
+if ($resource === 'search' && $id === 'track' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = getInputData();
+    $query = $input['query'] ?? '';
+    
+    if (!empty($query) && isset($_SESSION['user_id'])) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO search_history (user_id, search_query, searched_at) 
+                VALUES (?, ?, NOW())
+            ");
+            $stmt->execute([$_SESSION['user_id'], $query]);
+        } catch (PDOException $e) {
+            error_log("Failed to track search: " . $e->getMessage());
+        }
+    }
+    
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// ============================================
 // AUTH ROUTES
 // ============================================
 
@@ -185,7 +305,7 @@ if ($resource === 'auth' && $id === 'register' && $_SERVER['REQUEST_METHOD'] ===
     }
     
     $hashed = password_hash($password, PASSWORD_DEFAULT);
-    $isApproved = ($role === 'audience') ? 1 : 0;
+    $isApproved = ($role === 'audience' || $role === 'admin') ? 1 : 0;
     $adminCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
     
     if ($role === 'admin' && $adminCount > 0) {
@@ -204,7 +324,6 @@ if ($resource === 'auth' && $id === 'register' && $_SERVER['REQUEST_METHOD'] ===
     );
     
     if ($stmt->execute([$name, $email, $hashed, $role, $isApproved, $emailVerified, $verificationCode, $verificationExpires])) {
-        // Send verification email
         if (!$emailVerified && $verificationCode) {
             zemalink_send_verification_email($email, $name, $verificationCode);
         }
@@ -390,7 +509,6 @@ if ($resource === 'auth' && $id === 'resend-code' && $_SERVER['REQUEST_METHOD'] 
     $pdo->prepare("UPDATE users SET email_verification_code = ?, email_verification_expires = ? WHERE id = ?")
         ->execute([$code, $expires, $user['id']]);
     
-    // Send new verification email
     zemalink_send_verification_email($email, $user['name'], $code);
     
     echo json_encode([
@@ -447,6 +565,37 @@ if ($resource === 'songs' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     exit();
 }
 
+// GET SINGLE SONG
+if ($resource === 'song' && is_numeric($id) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $songId = (int) $id;
+    $stmt = $pdo->prepare(
+        "SELECT s.*, 
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                COALESCE(s.rating, 0) as rating
+         FROM songs s 
+         WHERE s.id = ?"
+    );
+    $stmt->execute([$songId]);
+    $song = $stmt->fetch();
+    
+    if ($song) {
+        $hasAccess = true;
+        if ($song['is_premium'] == 1 && isset($_SESSION['user_id'])) {
+            $stmt2 = $pdo->prepare("SELECT id FROM user_purchases WHERE user_id = ? AND song_id = ?");
+            $stmt2->execute([$_SESSION['user_id'], $songId]);
+            $hasAccess = $stmt2->fetch() ? true : false;
+        } elseif ($song['is_premium'] == 1 && !isset($_SESSION['user_id'])) {
+            $hasAccess = false;
+        }
+        
+        $song['can_play'] = $hasAccess;
+        echo json_encode(['success' => true, 'data' => $song]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Song not found']);
+    }
+    exit();
+}
+
 // ============================================
 // USER ROUTES
 // ============================================
@@ -463,7 +612,7 @@ if ($resource === 'user' && $id === 'likes' && $_SERVER['REQUEST_METHOD'] === 'G
                 COALESCE(s.rating, 0) as rating
          FROM likes l 
          JOIN songs s ON l.song_id = s.id 
-         WHERE l.user_id = ?"
+         WHERE l.user_id = ? AND s.is_approved = 1"
     );
     $stmt->execute([$_SESSION['user_id']]);
     $likes = $stmt->fetchAll();
@@ -495,14 +644,13 @@ if ($resource === 'user' && $id === 'like' && $_SERVER['REQUEST_METHOD'] === 'PO
         $liked = true;
     }
     
-    // Recalculate rating after like changes
     $ratingService->updateSongRating($songId);
     
     echo json_encode(['liked' => $liked]);
     exit();
 }
 
-// RECORD LISTEN (PLAY COUNT)
+// RECORD LISTEN
 if ($resource === 'user' && $id === 'listen' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => false, 'error' => 'Login required']);
@@ -514,23 +662,19 @@ if ($resource === 'user' && $id === 'listen' && $_SERVER['REQUEST_METHOD'] === '
     $userId = $_SESSION['user_id'];
     
     if ($songId > 0) {
-        // Record in listening history
         $stmt = $pdo->prepare("INSERT INTO listening_history (user_id, song_id) VALUES (?, ?)");
         $stmt->execute([$userId, $songId]);
         
-        // Check if user already viewed this song
         $stmt = $pdo->prepare("SELECT id FROM song_views WHERE user_id = ? AND song_id = ?");
         $stmt->execute([$userId, $songId]);
         
         if (!$stmt->fetch()) {
-            // First time view - increment plays and record view
             $stmt = $pdo->prepare("INSERT INTO song_views (user_id, song_id) VALUES (?, ?)");
             $stmt->execute([$userId, $songId]);
             
             $stmt = $pdo->prepare("UPDATE songs SET plays = plays + 1 WHERE id = ?");
             $stmt->execute([$songId]);
             
-            // Recalculate rating after play count increases
             $ratingService->updateSongRating($songId);
         }
     }
@@ -553,13 +697,92 @@ if ($resource === 'user' && $id === 'listening-history' && $_SERVER['REQUEST_MET
                 COALESCE(s.rating, 0) as rating
          FROM listening_history lh 
          JOIN songs s ON lh.song_id = s.id 
-         WHERE lh.user_id = ? 
+         WHERE lh.user_id = ? AND s.is_approved = 1
          ORDER BY lh.played_at DESC 
          LIMIT 50"
     );
     $stmt->execute([$_SESSION['user_id']]);
     $history = $stmt->fetchAll();
     echo json_encode(['success' => true, 'songs' => $history]);
+    exit();
+}
+
+// GET PURCHASED SONGS
+if ($resource === 'user' && $id === 'purchased-songs' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => true, 'songs' => []]);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare(
+        "SELECT s.*, 
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                COALESCE(s.rating, 0) as rating
+         FROM user_purchases up 
+         JOIN songs s ON up.song_id = s.id 
+         WHERE up.user_id = ? AND s.is_approved = 1
+         ORDER BY up.purchased_at DESC"
+    );
+    $stmt->execute([$_SESSION['user_id']]);
+    $purchased = $stmt->fetchAll();
+    echo json_encode(['success' => true, 'songs' => $purchased]);
+    exit();
+}
+
+// REPORT SONG
+if ($resource === 'user' && $id === 'report-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'error' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $songId = (int) ($input['song_id'] ?? 0);
+    $reason = trim($input['reason'] ?? '');
+    $userId = $_SESSION['user_id'];
+    
+    if ($songId <= 0 || empty($reason)) {
+        echo json_encode(['success' => false, 'error' => 'Song ID and reason required']);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO reports (reported_by, song_id, reason) VALUES (?, ?, ?)");
+    $stmt->execute([$userId, $songId, $reason]);
+    
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// UPGRADE SUBSCRIPTION
+if ($resource === 'user' && $id === 'upgrade-subscription' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Login required']);
+        exit();
+    }
+    
+    $input = getInputData();
+    $plan = $input['plan'] ?? 'monthly';
+    $userId = $_SESSION['user_id'];
+    $months = $plan === 'yearly' ? 12 : 1;
+    $amount = $plan === 'yearly' ? 99.00 : 9.99;
+    $expires = date('Y-m-d', strtotime("+{$months} months"));
+    
+    $stmt = $pdo->prepare("UPDATE users SET subscription = 'premium', subscription_expires = ? WHERE id = ?");
+    $stmt->execute([$expires, $userId]);
+    
+    $stmt = $pdo->prepare("INSERT INTO payments (user_id, amount, payment_type, status) VALUES (?, ?, 'subscription', 'completed')");
+    $stmt->execute([$userId, $amount]);
+    
+    $userStmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+    $userStmt->execute([$userId]);
+    $user = $userStmt->fetch();
+    zemalink_send_payment_email($user['email'], $user['name'], 'Premium Subscription', $amount);
+    
+    echo json_encode([
+        'success' => true,
+        'subscription_status' => 'premium',
+        'subscription_expires' => $expires
+    ]);
     exit();
 }
 
@@ -581,7 +804,7 @@ if ($resource === 'song' && $id === 'rating-breakdown' && $_SERVER['REQUEST_METH
 }
 
 // ============================================
-// CHAPA PAYMENT ROUTES
+// PAYMENT ROUTES
 // ============================================
 
 // Initialize payment for subscription
@@ -594,7 +817,6 @@ if ($resource === 'payment' && $id === 'initiate-subscription' && $_SERVER['REQU
     $input = getInputData();
     $plan = $input['plan'] ?? 'monthly';
     
-    // Get user details
     $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
@@ -605,7 +827,8 @@ if ($resource === 'payment' && $id === 'initiate-subscription' && $_SERVER['REQU
     $returnUrl = zemalink_env('APP_FRONTEND_URL', 'http://localhost:5173') . '/subscription?status=success';
     
     $paymentData = [
-        'amount' => $amount,
+        'amount' => number_format($amount, 2, '.', ''),
+        'currency' => 'ETB',
         'email' => $user['email'],
         'first_name' => explode(' ', $user['name'])[0],
         'last_name' => explode(' ', $user['name'])[1] ?? '',
@@ -616,7 +839,7 @@ if ($resource === 'payment' && $id === 'initiate-subscription' && $_SERVER['REQU
         'description' => ucfirst($plan) . ' subscription plan'
     ];
     
-    $result = $chapaService->initializePayment($paymentData);
+    $result = zemalink_chapa_initialize($paymentData);
     echo json_encode($result);
     exit();
 }
@@ -630,10 +853,9 @@ if ($resource === 'payment' && $id === 'verify-subscription' && $_SERVER['REQUES
         exit();
     }
     
-    $result = $chapaService->verifyPayment($tx_ref);
+    $result = zemalink_chapa_verify($tx_ref);
     
-    if ($result['success']) {
-        // Extract user ID from tx_ref (format: SUB_{user_id}_{timestamp})
+    if ($result['success'] && isset($result['data']['status']) && $result['data']['status'] === 'success') {
         preg_match('/SUB_(\d+)_/', $tx_ref, $matches);
         $userId = $matches[1] ?? 0;
         
@@ -645,12 +867,10 @@ if ($resource === 'payment' && $id === 'verify-subscription' && $_SERVER['REQUES
             $stmt = $pdo->prepare("UPDATE users SET subscription = 'premium', subscription_expires = ? WHERE id = ?");
             $stmt->execute([$expires, $userId]);
             
-            // Record payment
             $amount = $plan === 'yearly' ? 99.00 : 9.99;
             $stmt = $pdo->prepare("INSERT INTO payments (user_id, amount, payment_type, status) VALUES (?, ?, 'subscription', 'completed')");
             $stmt->execute([$userId, $amount]);
             
-            // Send confirmation email
             $userStmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
             $userStmt->execute([$userId]);
             $user = $userStmt->fetch();
@@ -664,8 +884,8 @@ if ($resource === 'payment' && $id === 'verify-subscription' && $_SERVER['REQUES
     exit();
 }
 
-// Initialize payment for song purchase
-if ($resource === 'payment' && $id === 'initiate-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// MOCK PURCHASE SONG
+if ($resource === 'payment' && $id === 'purchase-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['success' => false, 'message' => 'Login required']);
         exit();
@@ -673,85 +893,46 @@ if ($resource === 'payment' && $id === 'initiate-song' && $_SERVER['REQUEST_METH
     
     $input = getInputData();
     $songId = (int) ($input['song_id'] ?? 0);
+    $userId = $_SESSION['user_id'];
     
-    // Get song details
-    $stmt = $pdo->prepare("SELECT title, artist, price FROM songs WHERE id = ? AND is_premium = 1");
-    $stmt->execute([$songId]);
-    $song = $stmt->fetch();
+    $songStmt = $pdo->prepare("SELECT id, title, price, is_premium FROM songs WHERE id = ? AND is_premium = 1");
+    $songStmt->execute([$songId]);
+    $song = $songStmt->fetch();
     
     if (!$song) {
-        echo json_encode(['success' => false, 'message' => 'Song not found']);
+        echo json_encode(['success' => false, 'message' => 'Premium song not found']);
         exit();
     }
     
-    // Get user details
-    $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
+    $checkStmt = $pdo->prepare("SELECT id FROM user_purchases WHERE user_id = ? AND song_id = ?");
+    $checkStmt->execute([$userId, $songId]);
+    if ($checkStmt->fetch()) {
+        echo json_encode(['success' => true, 'message' => 'Already purchased']);
+        exit();
+    }
     
     $amount = (float) ($song['price'] > 0 ? $song['price'] : 0.99);
-    $tx_ref = 'SONG_' . $_SESSION['user_id'] . '_' . $songId . '_' . time();
-    $callbackUrl = zemalink_env('APP_BASE_URL', 'http://localhost:8000') . '/payment/verify-song';
-    $returnUrl = zemalink_env('APP_FRONTEND_URL', 'http://localhost:5173') . '/pro-deal?songId=' . $songId . '&status=success';
     
-    $paymentData = [
-        'amount' => $amount,
-        'email' => $user['email'],
-        'first_name' => explode(' ', $user['name'])[0],
-        'last_name' => explode(' ', $user['name'])[1] ?? '',
-        'tx_ref' => $tx_ref,
-        'callback_url' => $callbackUrl,
-        'return_url' => $returnUrl,
-        'title' => 'ZemaLink Song Purchase',
-        'description' => $song['title'] . ' - ' . $song['artist']
-    ];
-    
-    $result = $chapaService->initializePayment($paymentData);
-    echo json_encode($result);
-    exit();
-}
-
-// Verify song payment
-if ($resource === 'payment' && $id === 'verify-song' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $tx_ref = $_GET['tx_ref'] ?? '';
-    
-    if (empty($tx_ref)) {
-        echo json_encode(['success' => false, 'message' => 'Transaction reference required']);
-        exit();
-    }
-    
-    $result = $chapaService->verifyPayment($tx_ref);
-    
-    if ($result['success']) {
-        // Extract user ID and song ID from tx_ref (format: SONG_{user_id}_{song_id}_{timestamp})
-        preg_match('/SONG_(\d+)_(\d+)_/', $tx_ref, $matches);
-        $userId = $matches[1] ?? 0;
-        $songId = $matches[2] ?? 0;
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare("INSERT INTO payments (user_id, song_id, amount, payment_type, status) VALUES (?, ?, ?, 'song', 'completed')");
+        $stmt->execute([$userId, $songId, $amount]);
+        $paymentId = $pdo->lastInsertId();
         
-        if ($userId && $songId) {
-            $amount = $result['data']['data']['amount'] ?? 0;
-            
-            // Record purchase
-            $stmt = $pdo->prepare("INSERT INTO payments (user_id, song_id, amount, payment_type, status) VALUES (?, ?, ?, 'song', 'completed')");
-            $stmt->execute([$userId, $songId, $amount]);
-            $paymentId = $pdo->lastInsertId();
-            
-            $stmt = $pdo->prepare("INSERT INTO user_purchases (user_id, song_id, payment_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE payment_id = VALUES(payment_id)");
-            $stmt->execute([$userId, $songId, $paymentId]);
-            
-            // Send confirmation email
-            $userStmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
-            $userStmt->execute([$userId]);
-            $user = $userStmt->fetch();
-            $songStmt = $pdo->prepare("SELECT title FROM songs WHERE id = ?");
-            $songStmt->execute([$songId]);
-            $song = $songStmt->fetch();
-            zemalink_send_payment_email($user['email'], $user['name'], 'Song: ' . $song['title'], $amount);
-        }
+        $stmt = $pdo->prepare("INSERT INTO user_purchases (user_id, song_id, payment_id) VALUES (?, ?, ?)");
+        $stmt->execute([$userId, $songId, $paymentId]);
         
-        echo json_encode(['success' => true, 'message' => 'Song purchased successfully']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Payment verification failed']);
+        $pdo->commit();
+        
+        $userStmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+        $userStmt->execute([$userId]);
+        $user = $userStmt->fetch();
+        zemalink_send_payment_email($user['email'], $user['name'], 'Song: ' . $song['title'], $amount);
+        
+        echo json_encode(['success' => true, 'message' => 'Purchase complete']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'message' => 'Purchase failed: ' . $e->getMessage()]);
     }
     exit();
 }
@@ -831,7 +1012,6 @@ if ($resource === 'playlist' && $id === 'add-song' && $_SERVER['REQUEST_METHOD']
     $playlistId = (int) ($input['playlist_id'] ?? 0);
     $songId = (int) ($input['song_id'] ?? 0);
     
-    // Verify playlist belongs to user
     $stmt = $pdo->prepare("SELECT id FROM playlists WHERE id = ? AND user_id = ?");
     $stmt->execute([$playlistId, $_SESSION['user_id']]);
     if (!$stmt->fetch()) {
@@ -878,6 +1058,16 @@ if ($resource === 'admin' && $id === 'approve-musician' && $_SERVER['REQUEST_MET
     exit();
 }
 
+// Reject musician
+if ($resource === 'admin' && $id === 'reject-musician' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $userId = (int) ($input['user_id'] ?? 0);
+    $pdo->prepare("UPDATE users SET role = 'audience', is_approved = 1 WHERE id = ? AND role = 'musician' AND is_approved = 0")->execute([$userId]);
+    echo json_encode(['success' => true, 'message' => 'Registration rejected']);
+    exit();
+}
+
 // Update user role
 if ($resource === 'admin' && $id === 'update-role' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     require_admin_json($pdo);
@@ -885,6 +1075,310 @@ if ($resource === 'admin' && $id === 'update-role' && $_SERVER['REQUEST_METHOD']
     $userId = $input['user_id'] ?? 0;
     $role = $input['role'] ?? '';
     $userModel->updateRole($userId, $role);
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// Delete user
+if ($resource === 'admin' && $id === 'delete-user' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $userId = (int) ($input['user_id'] ?? 0);
+    $adminId = (int) $_SESSION['user_id'];
+    if ($userId === $adminId) {
+        echo json_encode(['success' => false, 'message' => 'Cannot delete self']);
+        exit();
+    }
+    $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$userId]);
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// Get pending songs
+if ($resource === 'admin' && $id === 'pending-songs' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $stmt = $pdo->query(
+        "SELECT s.*, u.name AS uploader_name FROM songs s
+         LEFT JOIN users u ON s.uploader_id = u.id
+         WHERE s.is_approved = 0 ORDER BY s.created_at DESC"
+    );
+    echo json_encode(['success' => true, 'songs' => $stmt->fetchAll()]);
+    exit();
+}
+
+// Get all songs (admin)
+if ($resource === 'admin' && $id === 'all-songs' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $stmt = $pdo->query(
+        "SELECT s.*, u.name AS uploader_name FROM songs s
+         LEFT JOIN users u ON s.uploader_id = u.id ORDER BY s.created_at DESC"
+    );
+    echo json_encode(['success' => true, 'songs' => $stmt->fetchAll()]);
+    exit();
+}
+
+// Approve song
+if ($resource === 'admin' && $id === 'approve-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $sid = (int) ($input['song_id'] ?? $_POST['song_id'] ?? 0);
+    if ($sid <= 0) {
+        echo json_encode(['success' => false, 'message' => 'song_id required']);
+        exit();
+    }
+    $pdo->prepare('UPDATE songs SET is_approved = 1 WHERE id = ?')->execute([$sid]);
+    echo json_encode(['success' => true, 'message' => 'Song approved']);
+    exit();
+}
+
+// Reject song
+if ($resource === 'admin' && $id === 'reject-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $sid = (int) ($input['song_id'] ?? $_POST['song_id'] ?? 0);
+    if ($sid <= 0) {
+        echo json_encode(['success' => false, 'message' => 'song_id required']);
+        exit();
+    }
+    $pdo->prepare('DELETE FROM songs WHERE id = ?')->execute([$sid]);
+    echo json_encode(['success' => true, 'message' => 'Song rejected and removed']);
+    exit();
+}
+
+// Feature song
+if ($resource === 'admin' && $id === 'feature-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $sid = (int) ($input['song_id'] ?? 0);
+    $feat = !empty($input['featured']) ? 1 : 0;
+    $pdo->prepare('UPDATE songs SET featured = ? WHERE id = ?')->execute([$feat, $sid]);
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// Set song premium
+if ($resource === 'admin' && $id === 'set-song-premium' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $sid = (int) ($input['song_id'] ?? 0);
+    $prem = !empty($input['is_premium']) ? 1 : 0;
+    $price = isset($input['price']) ? (float) $input['price'] : 0;
+    $pdo->prepare('UPDATE songs SET is_premium = ?, price = ? WHERE id = ?')->execute([$prem, $price, $sid]);
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// Delete song (admin)
+if ($resource === 'admin' && $id === 'delete-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $sid = (int) ($input['song_id'] ?? 0);
+    $pdo->prepare('DELETE FROM songs WHERE id = ?')->execute([$sid]);
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// Get reports
+if ($resource === 'admin' && $id === 'reports' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $stmt = $pdo->query(
+        "SELECT r.*, u.name AS reporter_name, s.title AS song_title FROM reports r
+         JOIN users u ON r.reported_by = u.id
+         JOIN songs s ON r.song_id = s.id
+         ORDER BY r.created_at DESC"
+    );
+    echo json_encode(['success' => true, 'reports' => $stmt->fetchAll()]);
+    exit();
+}
+
+// Update report status
+if ($resource === 'admin' && $id === 'report-status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_admin_json($pdo);
+    $input = getInputData();
+    $rid = (int) ($input['report_id'] ?? 0);
+    $status = $input['status'] ?? 'reviewed';
+    if (!in_array($status, ['open', 'reviewed', 'dismissed'], true)) {
+        $status = 'reviewed';
+    }
+    $pdo->prepare('UPDATE reports SET status = ? WHERE id = ?')->execute([$status, $rid]);
+    echo json_encode(['success' => true]);
+    exit();
+}
+
+// Get payments
+if ($resource === 'admin' && $id === 'payments' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $stmt = $pdo->query(
+        'SELECT p.*, u.name AS user_name FROM payments p JOIN users u ON p.user_id = u.id ORDER BY p.payment_date DESC LIMIT 200'
+    );
+    echo json_encode(['success' => true, 'payments' => $stmt->fetchAll()]);
+    exit();
+}
+
+// Get stats
+if ($resource === 'admin' && $id === 'stats' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_admin_json($pdo);
+    $users = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    $songs = (int) $pdo->query('SELECT COUNT(*) FROM songs')->fetchColumn();
+    $rev = $pdo->query(
+        "SELECT COALESCE(SUM(amount),0) AS t FROM payments WHERE status = 'completed'"
+    )->fetch();
+    echo json_encode([
+        'success' => true,
+        'stats' => [
+            'total_users' => $users,
+            'total_songs' => $songs,
+            'revenue' => (float) ($rev['t'] ?? 0),
+        ],
+    ]);
+    exit();
+}
+
+// ============================================
+// MUSICIAN ROUTES
+// ============================================
+
+// Get my songs (musician)
+if ($resource === 'musician' && $id === 'my-songs' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        exit();
+    }
+    $uid = $_SESSION['user_id'];
+    $stmt = $pdo->prepare("SELECT * FROM songs WHERE uploader_id = ? ORDER BY created_at DESC");
+    $stmt->execute([$uid]);
+    echo json_encode(['success' => true, 'songs' => $stmt->fetchAll()]);
+    exit();
+}
+
+// Get earnings (musician)
+if ($resource === 'musician' && $id === 'earnings' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        exit();
+    }
+    $uid = $_SESSION['user_id'];
+    $stmt = $pdo->prepare(
+        "SELECT COALESCE(SUM(p.amount),0) AS total FROM payments p
+         JOIN songs s ON p.song_id = s.id
+         WHERE p.status = 'completed' AND p.payment_type = 'song' AND s.uploader_id = ?"
+    );
+    $stmt->execute([$uid]);
+    $row = $stmt->fetch();
+    echo json_encode(['success' => true, 'earnings' => (float) ($row['total'] ?? 0)]);
+    exit();
+}
+
+// Get stats (musician)
+if ($resource === 'musician' && $id === 'stats' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        exit();
+    }
+    $uid = $_SESSION['user_id'];
+    $stmt = $pdo->prepare(
+        'SELECT COALESCE(SUM(plays),0) AS plays, COUNT(*) AS songs FROM songs WHERE uploader_id = ?'
+    );
+    $stmt->execute([$uid]);
+    $s = $stmt->fetch();
+    $likes = $pdo->prepare(
+        'SELECT COUNT(*) FROM likes l JOIN songs s ON l.song_id = s.id WHERE s.uploader_id = ?'
+    );
+    $likes->execute([$uid]);
+    $purchases = $pdo->prepare(
+        "SELECT COUNT(*) FROM user_purchases up JOIN songs s ON up.song_id = s.id WHERE s.uploader_id = ?"
+    );
+    $purchases->execute([$uid]);
+    echo json_encode([
+        'success' => true,
+        'stats' => [
+            'plays' => (int) ($s['plays'] ?? 0),
+            'songs' => (int) ($s['songs'] ?? 0),
+            'likes' => (int) $likes->fetchColumn(),
+            'purchases' => (int) $purchases->fetchColumn(),
+        ],
+    ]);
+    exit();
+}
+
+// Upload song (musician)
+if ($resource === 'musician' && $id === 'upload-song' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        exit();
+    }
+    $uid = $_SESSION['user_id'];
+    
+    $title = $_POST['title'] ?? '';
+    $artist = $_POST['artist'] ?? '';
+    $album = $_POST['album'] ?? '';
+    $genre = trim((string) ($_POST['genre'] ?? ''));
+    $isPremium = !empty($_POST['is_premium']) ? 1 : 0;
+    $price = isset($_POST['price']) ? (float) $_POST['price'] : 0;
+    
+    if ($isPremium && $price <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Set a valid premium price']);
+        exit();
+    }
+    if (!$isPremium) {
+        $price = 0;
+    }
+    if ($title === '' || $artist === '') {
+        echo json_encode(['success' => false, 'message' => 'Title and artist required']);
+        exit();
+    }
+    
+    if (empty($_FILES['file']['tmp_name'])) {
+        echo json_encode(['success' => false, 'message' => 'Audio/video file required']);
+        exit();
+    }
+    
+    $uploadDir = __DIR__ . '/uploads/';
+    $audioDir = $uploadDir . 'audio/';
+    $coversDir = $uploadDir . 'covers/';
+    
+    if (!is_dir($audioDir)) mkdir($audioDir, 0777, true);
+    if (!is_dir($coversDir)) mkdir($coversDir, 0777, true);
+    
+    $audioPath = zemalink_cloudinary_upload($_FILES['file']['tmp_name'], 'zemalink/audio', 'video');
+    if (!$audioPath) {
+        $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION) ?: 'mp3';
+        $base = 'a_' . uniqid('', true) . '.' . preg_replace('/[^a-zA-Z0-9]/', '', $ext);
+        $audioPath = '/uploads/audio/' . $base;
+        move_uploaded_file($_FILES['file']['tmp_name'], __DIR__ . $audioPath);
+    }
+    
+    $coverPath = null;
+    if (!empty($_FILES['cover']['tmp_name'])) {
+        $coverPath = zemalink_cloudinary_upload($_FILES['cover']['tmp_name'], 'zemalink/covers', 'image');
+        if (!$coverPath) {
+            $cext = pathinfo($_FILES['cover']['name'], PATHINFO_EXTENSION) ?: 'jpg';
+            $cbase = 'c_' . uniqid('', true) . '.' . preg_replace('/[^a-zA-Z0-9]/', '', $cext);
+            $coverPath = '/uploads/covers/' . $cbase;
+            move_uploaded_file($_FILES['cover']['tmp_name'], __DIR__ . $coverPath);
+        }
+    }
+    
+    $mediaType = $_POST['media_type'] ?? 'audio';
+    $stmt = $pdo->prepare(
+        'INSERT INTO songs (title, artist, album, genre, file_path, cover_image, uploader_id, is_premium, price, is_approved, plays, media_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)'
+    );
+    $stmt->execute([$title, $artist, $album, $genre !== '' ? $genre : null, $audioPath, $coverPath, $uid, $isPremium, $price, $mediaType]);
+    
+    echo json_encode(['success' => true, 'id' => $pdo->lastInsertId(), 'message' => 'Song uploaded pending approval']);
+    exit();
+}
+
+// Delete song (musician)
+if ($resource === 'musician' && $id === 'delete-song' && is_numeric($sub) && ($_SERVER['REQUEST_METHOD'] === 'DELETE' || $_SERVER['REQUEST_METHOD'] === 'POST')) {
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        exit();
+    }
+    $uid = $_SESSION['user_id'];
+    $songId = (int) $sub;
+    $pdo->prepare('DELETE FROM songs WHERE id = ? AND uploader_id = ?')->execute([$songId, $uid]);
     echo json_encode(['success' => true]);
     exit();
 }

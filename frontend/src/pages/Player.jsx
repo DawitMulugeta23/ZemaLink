@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { usePlayer } from "../context/PlayerContext";
+import { useAuth } from "../context/AuthContext";
 import { DEFAULT_COVER } from "../constants";
 
 function Player() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const {
     currentSong,
     isPlaying,
@@ -28,7 +31,13 @@ function Player() {
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [autoPlayNext, setAutoPlayNext] = useState(true);
+
+  // Check if current song is locked (premium without purchase)
+  const isPremium = currentSong?.is_premium === 1;
+  const hasAccess = currentSong?.can_play === true || 
+                    user?.subscription_status === 'premium' ||
+                    currentSong?.purchased === true;
+  const isLocked = isPremium && !hasAccess;
 
   useEffect(() => {
     if (mediaRef.current) {
@@ -37,13 +46,26 @@ function Player() {
   }, [volume, mediaRef]);
 
   useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login?redirect=/player");
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
     if (!currentSong) {
       navigate("/browse");
       return;
     }
-  }, [currentSong, navigate]);
+    
+    // If song is locked, redirect to payment
+    if (isLocked && currentSong) {
+      toast.warning("This is a premium track. Please purchase it first.");
+      navigate(`/pro-deal?songId=${currentSong.id}`);
+    }
+  }, [currentSong, isLocked, navigate]);
 
   const handleSeek = (e) => {
+    if (isLocked) return;
     const seekTime = (e.target.value / 100) * duration;
     seekTo(seekTime);
   };
@@ -73,6 +95,36 @@ function Player() {
 
   const isLiked = currentSong && likedSongs?.some((s) => s.id === currentSong.id);
 
+  // Handle play/pause with lock check
+  const handlePlayPause = () => {
+    if (isLocked) {
+      toast.warning("This is a premium track. Please purchase it first.");
+      navigate(`/pro-deal?songId=${currentSong?.id}`);
+      return;
+    }
+    togglePlay();
+  };
+
+  // Handle next song with lock check
+  const handleNext = () => {
+    if (isLocked) {
+      toast.warning("This is a premium track. Please purchase it first.");
+      navigate(`/pro-deal?songId=${currentSong?.id}`);
+      return;
+    }
+    nextSong();
+  };
+
+  // Handle previous song with lock check
+  const handlePrev = () => {
+    if (isLocked) {
+      toast.warning("This is a premium track. Please purchase it first.");
+      navigate(`/pro-deal?songId=${currentSong?.id}`);
+      return;
+    }
+    prevSong();
+  };
+
   if (!currentSong) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -84,6 +136,36 @@ function Player() {
           >
             Browse Music
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If locked, show purchase prompt instead of player
+  if (isLocked) {
+    return (
+      <div className="max-w-2xl mx-auto mt-12">
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-8 text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Premium Track Locked</h1>
+          <p className="text-white/60 mb-2">{currentSong.title} - {currentSong.artist}</p>
+          <p className="text-white/40 text-sm mb-6">
+            This is a premium track. Purchase it once to get lifetime access.
+          </p>
+          <button
+            onClick={() => navigate(`/pro-deal?songId=${currentSong.id}`)}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:scale-105 transition"
+          >
+            💎 Unlock for ${Number(currentSong.price || 0.99).toFixed(2)}
+          </button>
+          <div className="mt-4">
+            <button
+              onClick={() => navigate("/browse")}
+              className="text-white/50 text-sm hover:text-white transition"
+            >
+              ← Back to Browse
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -150,10 +232,10 @@ function Player() {
             <div className="p-6 border-t border-white/10">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                    {currentSong.title}
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 flex items-center gap-2">
+                    <span>{currentSong.title}</span>
                     {currentSong?.is_premium && (
-                      <span className="ml-2 inline-flex rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white align-middle">
+                      <span className="inline-flex rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white align-middle">
                         PRO
                       </span>
                     )}
@@ -188,19 +270,19 @@ function Player() {
               {/* Controls */}
               <div className="flex items-center justify-center gap-4 md:gap-8 mb-6">
                 <button
-                  onClick={prevSong}
+                  onClick={handlePrev}
                   className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xl md:text-2xl transition hover:scale-110"
                 >
                   ⏮
                 </button>
                 <button
-                  onClick={togglePlay}
+                  onClick={handlePlayPause}
                   className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center text-white text-3xl md:text-4xl transition hover:scale-110 shadow-lg"
                 >
                   {isPlaying ? "⏸" : "▶"}
                 </button>
                 <button
-                  onClick={nextSong}
+                  onClick={handleNext}
                   className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xl md:text-2xl transition hover:scale-110"
                 >
                   ⏭
@@ -269,48 +351,63 @@ function Player() {
                 </p>
               ) : (
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scroll">
-                  {relatedSongs.map((song, index) => (
-                    <div
-                      key={song.id}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer group"
-                      onClick={() => {
-                        // Play this song and set remaining as next
-                        const remaining = relatedSongs.slice(index + 1);
-                        // TODO: Update context to set remaining as next
-                        playSong(song);
-                      }}
-                    >
-                      <div className="text-white/40 text-sm w-6">
-                        {index === 0 ? "▶" : index + 1}
-                      </div>
-                      <img
-                        src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
-                        alt={song.title}
-                        className="w-10 h-10 rounded-lg object-cover"
-                        onError={(e) => {
-                          e.target.src = DEFAULT_COVER;
+                  {relatedSongs.map((song, index) => {
+                    const isSongPremium = song?.is_premium === 1;
+                    const songHasAccess = song?.can_play === true || 
+                                          user?.subscription_status === 'premium' ||
+                                          song?.purchased === true;
+                    const isSongLocked = isSongPremium && !songHasAccess;
+                    
+                    return (
+                      <div
+                        key={song.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer group"
+                        onClick={() => {
+                          if (isSongLocked) {
+                            toast.warning("This is a premium track. Please purchase it first.");
+                            navigate(`/pro-deal?songId=${song.id}`);
+                            return;
+                          }
+                          playSong({ ...song, can_play: true });
                         }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium truncate text-sm">
-                          {song.title}
-                        </p>
-                        <p className="text-white/40 text-xs truncate">
-                          {song.artist}
-                        </p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToQueue(song);
-                        }}
-                        className="text-white/30 hover:text-white/70 text-sm transition"
-                        title="Add to queue"
                       >
-                        📋
-                      </button>
-                    </div>
-                  ))}
+                        <div className="text-white/40 text-sm w-6">
+                          {index === 0 ? "▶" : index + 1}
+                        </div>
+                        <img
+                          src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
+                          alt={song.title}
+                          className="w-10 h-10 rounded-lg object-cover"
+                          onError={(e) => {
+                            e.target.src = DEFAULT_COVER;
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate text-sm flex items-center gap-1">
+                            <span className="truncate">{song.title}</span>
+                            {isSongLocked && <span className="text-xs">🔒</span>}
+                          </p>
+                          <p className="text-white/40 text-xs truncate">
+                            {song.artist}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isSongLocked) {
+                              toast.warning("Purchase this song first to add to queue.");
+                              return;
+                            }
+                            addToQueue(song);
+                          }}
+                          className="text-white/30 hover:text-white/70 text-sm transition"
+                          title="Add to queue"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -341,44 +438,54 @@ function Player() {
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scroll">
-                  {queue.map((song, index) => (
-                    <div
-                      key={song.id + index}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group"
-                    >
-                      <div className="text-white/40 text-sm w-6">
-                        {index === 0 ? "▶" : index + 1}
-                      </div>
-                      <img
-                        src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
-                        alt={song.title}
-                        className="w-10 h-10 rounded-lg object-cover"
-                        onError={(e) => {
-                          e.target.src = DEFAULT_COVER;
-                        }}
-                      />
-                      <div className="flex-1 min-w-0" onClick={() => {
-                        // Play this song and remove previous queue items
-                        const remaining = queue.slice(index + 1);
-                        // TODO: Update context to set remaining as queue
-                        playSong(song);
-                      }}>
-                        <p className="text-white font-medium truncate text-sm">
-                          {song.title}
-                        </p>
-                        <p className="text-white/40 text-xs truncate">
-                          {song.artist}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => removeFromQueue(song.id)}
-                        className="text-white/30 hover:text-red-400 text-sm transition"
-                        title="Remove from queue"
+                  {queue.map((song, index) => {
+                    const isSongPremium = song?.is_premium === 1;
+                    const songHasAccess = song?.can_play === true || 
+                                          user?.subscription_status === 'premium' ||
+                                          song?.purchased === true;
+                    const isSongLocked = isSongPremium && !songHasAccess;
+                    
+                    return (
+                      <div
+                        key={song.id + index}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group"
                       >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                        <div className="text-white/40 text-sm w-6">
+                          {index === 0 ? "▶" : index + 1}
+                        </div>
+                        <img
+                          src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
+                          alt={song.title}
+                          className="w-10 h-10 rounded-lg object-cover"
+                          onError={(e) => {
+                            e.target.src = DEFAULT_COVER;
+                          }}
+                        />
+                        <div className="flex-1 min-w-0" onClick={() => {
+                          if (isSongLocked) {
+                            toast.warning("This is a premium track. Please purchase it first.");
+                            return;
+                          }
+                          playSong({ ...song, can_play: true });
+                        }}>
+                          <p className="text-white font-medium truncate text-sm flex items-center gap-1">
+                            <span className="truncate">{song.title}</span>
+                            {isSongLocked && <span className="text-xs">🔒</span>}
+                          </p>
+                          <p className="text-white/40 text-xs truncate">
+                            {song.artist}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => removeFromQueue(song.id)}
+                          className="text-white/30 hover:text-red-400 text-sm transition"
+                          title="Remove from queue"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -14,12 +14,20 @@ function Browse() {
   });
   const [filteredRecent, setFilteredRecent] = useState([]);
 
+  const sortSongsByEngagement = (songsList) => {
+    return [...songsList].sort((a, b) => {
+      const likesDiff = (b.likes_count || 0) - (a.likes_count || 0);
+      if (likesDiff !== 0) return likesDiff;
+      return (b.plays || 0) - (a.plays || 0);
+    });
+  };
+
   const loadSongs = async () => {
     setLoading(true);
     try {
       const data = await songService.getSongs();
       console.log("Loaded songs:", data);
-      setSongs(data || []);
+      setSongs(sortSongsByEngagement(data || []));
     } catch (error) {
       console.error("Error loading songs:", error);
       setSongs([]);
@@ -37,7 +45,7 @@ function Browse() {
         (song) => song.genre?.toLowerCase() === genre.toLowerCase()
       );
       console.log(`Filtered by genre ${genre}:`, filtered);
-      setSongs(filtered);
+      setSongs(sortSongsByEngagement(filtered));
       setSearchQuery(`Genre: ${genre}`);
     } catch (error) {
       console.error("Genre search error:", error);
@@ -71,7 +79,7 @@ function Browse() {
     setLoading(true);
     try {
       const data = await songService.search(query);
-      setSongs(data || []);
+      setSongs(sortSongsByEngagement(data || []));
 
       // Save to recent searches
       const updated = [
@@ -178,10 +186,17 @@ function Browse() {
         </div>
       ) : (
         <>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
-              {searchQuery ? `Results for "${searchQuery}"` : "All Songs"}
-            </h2>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-6 gap-3">
+            <div>
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+                {searchQuery ? `Results for "${searchQuery}"` : "Popular Songs"}
+              </h2>
+              {!searchQuery && (
+                <p className="text-sm text-white/50 mt-1">
+                  Sorted by likes and viewer counts for the most popular music.
+                </p>
+              )}
+            </div>
             <span className="text-sm text-white/50">
               {songs.length} song{songs.length !== 1 ? "s" : ""} found
             </span>
