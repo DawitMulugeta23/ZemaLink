@@ -1383,6 +1383,46 @@ if ($resource === 'musician' && $id === 'delete-song' && is_numeric($sub) && ($_
     exit();
 }
 
+// GET PLAYLIST SONGS
+if ($resource === 'playlist-songs' && is_numeric($id) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $playlistId = (int) $id;
+    
+    // Check if user owns the playlist or if it's public
+    $stmt = $pdo->prepare("
+        SELECT p.id, p.user_id, p.is_public 
+        FROM playlists p 
+        WHERE p.id = ?
+    ");
+    $stmt->execute([$playlistId]);
+    $playlist = $stmt->fetch();
+    
+    if (!$playlist) {
+        echo json_encode(['success' => false, 'error' => 'Playlist not found']);
+        exit();
+    }
+    
+    $userId = $_SESSION['user_id'] ?? 0;
+    if ($playlist['user_id'] !== $userId && !$playlist['is_public']) {
+        echo json_encode(['success' => false, 'error' => 'Access denied']);
+        exit();
+    }
+    
+    $stmt = $pdo->prepare("
+        SELECT s.*, 
+               (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+               ps.created_at as added_at
+        FROM playlist_songs ps
+        JOIN songs s ON ps.song_id = s.id
+        WHERE ps.playlist_id = ? AND s.is_approved = 1
+        ORDER BY ps.created_at ASC
+    ");
+    $stmt->execute([$playlistId]);
+    $songs = $stmt->fetchAll();
+    
+    echo json_encode(['success' => true, 'songs' => $songs]);
+    exit();
+}
+
 // ============================================
 // DEFAULT RESPONSE
 // ============================================

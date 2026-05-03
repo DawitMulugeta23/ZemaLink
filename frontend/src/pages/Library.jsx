@@ -182,9 +182,10 @@ function Library() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
               {playlists.map((playlist) => (
-                <div
+                <Link
                   key={playlist.id}
-                  className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 cursor-pointer hover:scale-105 transition"
+                  to={`/playlist/${playlist.id}`}
+                  className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 cursor-pointer hover:scale-105 transition block"
                 >
                   <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-3">
                     <span className="text-4xl">📋</span>
@@ -193,7 +194,7 @@ function Library() {
                   <p className="text-xs text-white/50">
                     {playlist.song_count || 0} songs
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           )}

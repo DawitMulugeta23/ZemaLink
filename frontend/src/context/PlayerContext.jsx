@@ -8,7 +8,7 @@ import {
 import { useAuth } from "./AuthContext";
 import { songService } from "../services/songService";
 
-export const PlayerContext = createContext(null);
+const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
   const { user } = useAuth();

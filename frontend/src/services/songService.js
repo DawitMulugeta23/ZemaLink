@@ -112,7 +112,7 @@ export const songService = {
   },
 
   getPlaylistSongs: async (playlistId) => {
-    const response = await api.get(`playlists/${playlistId}/songs`);
+    const response = await api.get(`playlist-songs/${playlistId}`);
     if (response.success && Array.isArray(response.songs)) {
       return response.songs.map(mapSong);
     }
