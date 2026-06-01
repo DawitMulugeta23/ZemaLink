@@ -57,17 +57,14 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/Database.php';
 require_once __DIR__ . '/includes/AuthMiddleware.php';
+require_once __DIR__ . '/services/RatingService.php';
+require_once __DIR__ . '/services/UploadService.php';
+require_once __DIR__ . '/services/EmailService.php';
+require_once __DIR__ . '/services/ChapaService.php';
+require_once __DIR__ . '/services/AIService.php';
 
 $db = Database::getInstance();
 $pdo = $db->getConnection();
-
-$auth = new AuthMiddleware($pdo);
-
-$ratingService = new RatingService($pdo);
-$uploadService = new UploadService();
-$emailService = new EmailService();
-$chapaService = new ChapaService();
-$aiService = new AIService($pdo);
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
@@ -95,6 +92,14 @@ $subId2 = $segments[4] ?? '';
 $subId3 = $segments[5] ?? '';
 
 try {
+
+$auth = new AuthMiddleware($pdo);
+
+$ratingService = new RatingService($pdo);
+$uploadService = new UploadService();
+$emailService = new EmailService();
+$chapaService = new ChapaService();
+$aiService = new AIService($pdo);
 
 if ($resource === 'api' && $id === 'check' && $method === 'GET') {
     api_response([

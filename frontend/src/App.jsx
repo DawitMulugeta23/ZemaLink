@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -7,7 +6,6 @@ import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import Navbar from "./components/layout/Navbar";
-import Sidebar from "./components/layout/Sidebar";
 import MusicPlayer from "./components/music/MusicPlayer";
 import Background from "./components/layout/Background";
 
@@ -37,8 +35,6 @@ import ProDeal from "./pages/ProDeal";
 function AppContent() {
   const { user, loading } = useAuth();
   const { theme } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const location = useLocation();
 
@@ -49,22 +45,10 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300">
       <Background />
-      {!isAuthPage && (
-        <>
-          <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-          <Sidebar
-            isCollapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            mobileOpen={sidebarOpen}
-            onMobileClose={() => setSidebarOpen(false)}
-          />
-        </>
-      )}
-      <div className={`${isAuthPage ? "" : "pt-16"} flex`}>
+      {!isAuthPage && <Navbar />}
+      <div className={`${isAuthPage ? "" : "pt-14"} flex`}>
         <main
-          className={`flex-1 transition-all duration-300 ${
-            isAuthPage ? "" : sidebarCollapsed ? "lg:ml-16" : "lg:ml-60"
-          } min-h-[calc(100vh-4rem)] pb-28 px-4 md:px-6 lg:px-8`}
+          className={`flex-1 transition-all duration-300 min-h-[calc(100vh-3.5rem)] pb-28 px-4 md:px-6 lg:px-8`}
         >
           <Routes>
             {/* Public */}
@@ -73,18 +57,20 @@ function AppContent() {
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
+            {/* Public discovery (no auth required) */}
+            <Route path="/browse" element={<Browse />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/live-streams" element={<LiveStreams />} />
+            <Route path="/live-streams/:id" element={<StreamView />} />
+
             {/* Auth Required */}
-            <Route path="/browse" element={<ProtectedRoute><Browse /></ProtectedRoute>} />
-            <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
             <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
             <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
               <Route path="/playlist/:id" element={<ProtectedRoute><PlaylistDetail /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
-            <Route path="/live-streams" element={<ProtectedRoute><LiveStreams /></ProtectedRoute>} />
-            <Route path="/live-streams/:id" element={<ProtectedRoute><StreamView /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/purchased" element={<ProtectedRoute><Purchased /></ProtectedRoute>} />
             <Route path="/pro-deal" element={<ProtectedRoute><ProDeal /></ProtectedRoute>} />

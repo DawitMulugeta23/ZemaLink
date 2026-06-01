@@ -101,7 +101,7 @@ class EmailService
     {
         if (!$this->configured) {
             error_log("EmailService: SMTP not configured. Would send to {$to}: {$subject}");
-            return true;
+            return false;
         }
 
         try {

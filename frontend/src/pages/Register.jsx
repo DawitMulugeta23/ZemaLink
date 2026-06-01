@@ -22,12 +22,14 @@ export default function Register() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [adminExists, setAdminExists] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const res = await authService.adminExists();
       if (cancelled || !res?.success) return;
+      if (!cancelled) setAdminExists(res.admin_exists);
       if (res.admin_exists && adminMode) {
         navigate('/register', { replace: true });
       }
@@ -76,8 +78,9 @@ export default function Register() {
       }
       setTimeout(() => {
         if (result.requiresVerification) {
-          const hint = encodeURIComponent(result.message || '');
-          navigate(`/verify-email?email=${encodeURIComponent(result.verificationEmail || formData.email)}&hint=${hint}`);
+          const emailParam = encodeURIComponent(result.verificationEmail || formData.email);
+          const codeParam = encodeURIComponent(result.verificationCode || '');
+          navigate(`/verify-email?email=${emailParam}&code=${codeParam}`);
         } else {
           navigate('/');
         }
@@ -127,7 +130,7 @@ export default function Register() {
           )}
 
           {/* Admin warning */}
-          {!adminExists && !adminMode && (
+          {adminExists === false && !adminMode && (
             <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-center">
               <p className="text-sm text-amber-200 mb-3">No admin registered yet.</p>
               <Link to="/register?role=admin" className="inline-flex px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm transition hover:scale-105">

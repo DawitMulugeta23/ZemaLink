@@ -73,13 +73,14 @@ export function AuthProvider({ children }) {
           localStorage.setItem('pendingVerificationEmail', response.verification_email);
         }
         toast.success(response.message || 'Registration successful!');
-        return {
+        const result = {
           success: true,
           message: response.message,
           requiresVerification: !!response.requires_verification,
           verificationEmail: response.verification_email || email,
           verificationCode: response.verification_code ?? null,
         };
+        return result;
       }
       toast.error(response.message || 'Registration failed');
       return { success: false, message: response.message };
@@ -108,6 +109,7 @@ export function AuthProvider({ children }) {
       if (response.success) {
         setPendingVerificationEmail('');
         localStorage.removeItem('pendingVerificationEmail');
+        await checkAuth();
         toast.success(response.message || 'Email verified!');
       } else {
         toast.error(response.message || 'Verification failed');
@@ -117,7 +119,7 @@ export function AuthProvider({ children }) {
       toast.error('Network error');
       return { success: false, message: 'Network error' };
     }
-  }, []);
+  }, [checkAuth]);
 
   const resendCode = useCallback(async (email) => {
     try {

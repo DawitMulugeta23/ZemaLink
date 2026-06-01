@@ -72,19 +72,41 @@ function handleRegister(PDO $pdo, EmailService $emailService): void
     );
     $stmt->execute([$name, $email, $hashedPassword, $role, $isApproved, $emailVerified, $verificationCode, $verificationExpires]);
 
+    $userId = (int) $pdo->lastInsertId();
+
+    $emailSent = false;
     if (!$emailVerified && $verificationCode !== null) {
-        $emailService->sendVerificationCode($email, $verificationCode, $name);
+        $emailSent = $emailService->sendVerificationCode($email, $verificationCode, $name);
+    }
+
+    if ($emailVerified) {
+        $_SESSION['user_id'] = $userId;
+        session_regenerate_id(true);
     }
 
     $message = $emailVerified
         ? 'Registration successful'
-        : 'Registration successful! Check your email for the verification code.';
+        : ($emailSent
+            ? 'Registration successful! Check your email for the verification code.'
+            : 'Registration successful! Use the code below to verify your account.');
 
     api_response([
         'success' => true,
         'message' => $message,
         'requires_verification' => $emailVerified !== 1,
         'verification_email' => $email,
+        'verification_code' => !$emailSent && !$emailVerified ? $verificationCode : null,
+        'user' => $emailVerified ? [
+            'id' => $userId,
+            'name' => $name,
+            'email' => $email,
+            'role' => $role,
+            'is_approved' => $isApproved,
+            'subscription_status' => 'free',
+            'subscription_expires' => null,
+            'email_verified' => 1,
+            'avatar' => null,
+        ] : null,
     ]);
 }
 
@@ -138,7 +160,7 @@ function handleLogin(PDO $pdo): void
             'subscription_status' => $user['subscription'] ?? 'free',
             'subscription_expires' => $user['subscription_expires'] ?? null,
             'email_verified' => (int) ($user['email_verified'] ?? 0),
-            'avatar' => $user['avatar'] ?? null,
+            'avatar' => $user['profile_image'] ?? null,
         ],
     ]);
 }
@@ -181,6 +203,9 @@ function handleVerifyCode(PDO $pdo): void
     $pdo->prepare("UPDATE users SET email_verified = 1, email_verification_code = NULL, email_verification_expires = NULL WHERE id = ?")
         ->execute([$user['id']]);
 
+    $_SESSION['user_id'] = (int) $user['id'];
+    session_regenerate_id(true);
+
     api_response(['success' => true, 'message' => 'Email verified successfully']);
 }
 
@@ -211,9 +236,13 @@ function handleResendCode(PDO $pdo, EmailService $emailService): void
     $pdo->prepare("UPDATE users SET email_verification_code = ?, email_verification_expires = ? WHERE id = ?")
         ->execute([$code, $expires, $user['id']]);
 
-    $emailService->sendVerificationCode($email, $code, $user['name']);
+    $emailSent = $emailService->sendVerificationCode($email, $code, $user['name']);
 
-    api_response(['success' => true, 'message' => 'A new verification code has been sent']);
+    api_response([
+        'success' => true,
+        'message' => $emailSent ? 'A new verification code has been sent' : 'A new verification code has been generated',
+        'verification_code' => $emailSent ? null : $code,
+    ]);
 }
 
 function handleLogout(): void
@@ -231,17 +260,19 @@ function handleCheckAuth(PDO $pdo): void
 {
     if (!isset($_SESSION['user_id'])) {
         api_response(['authenticated' => false]);
+        return;
     }
 
     $stmt = $pdo->prepare(
         "SELECT id, name, email, role, is_approved, subscription, subscription_expires, 
-                email_verified, avatar FROM users WHERE id = ?"
+                email_verified, profile_image FROM users WHERE id = ?"
     );
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
 
     if (!$user) {
         api_response(['authenticated' => false]);
+        return;
     }
 
     api_response([
@@ -255,7 +286,7 @@ function handleCheckAuth(PDO $pdo): void
             'subscription_status' => $user['subscription'] ?? 'free',
             'subscription_expires' => $user['subscription_expires'] ?? null,
             'email_verified' => (int) ($user['email_verified'] ?? 0),
-            'avatar' => $user['avatar'] ?? null,
+            'avatar' => $user['profile_image'] ?? null,
         ],
     ]);
 }

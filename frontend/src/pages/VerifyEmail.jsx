@@ -1,21 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-function extractSixDigit(text) {
-  if (!text) return '';
-  const m =
-    text.match(/(?:OTP code:|verification code:?|code:?)\s*(\d{6})/i) ||
-    text.match(/\b(\d{6})\b/);
-  return m ? m[1] : '';
-}
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { verifyCode, resendCode, pendingVerificationEmail } = useAuth();
 
-  const [otp, setOtp] = useState(Array(6).fill(''));
+  const email = (
+    searchParams.get('email') || pendingVerificationEmail || ''
+  ).toLowerCase().trim();
+
+  // Resolve code from URL param first, then sessionStorage
+  const urlCode = searchParams.get('code') || '';
+  const storedCode = email ? sessionStorage.getItem(`zema_otp_${email}`) : '';
+  const resolvedCode = urlCode || storedCode || '';
+  const codeDigits = resolvedCode.length === 6 ? resolvedCode.split('') : Array(6).fill('');
+
+  const [otp, setOtp] = useState(codeDigits);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,23 +26,12 @@ export default function VerifyEmail() {
 
   const inputRefs = useRef([]);
 
-  const email = (
-    searchParams.get('email') || pendingVerificationEmail || ''
-  ).toLowerCase().trim();
-
-  // Auto-fill OTP from hint/sessionStorage
+  // Sync OTP when code comes from URL after navigation
   useEffect(() => {
-    const hintRaw = searchParams.get('hint') || '';
-    let decodedHint = '';
-    try { decodedHint = decodeURIComponent(hintRaw); } catch { decodedHint = hintRaw; }
-    const fromQuery = searchParams.get('code') || extractSixDigit(decodedHint);
-    const stored = email ? sessionStorage.getItem(`zema_otp_${email}`) : '';
-    const resolved = fromQuery || stored;
-    if (resolved && resolved.length === 6) {
-      const digits = resolved.split('');
-      setOtp(digits);
+    if (resolvedCode.length === 6) {
+      setOtp(resolvedCode.split(''));
     }
-  }, [email, searchParams]);
+  }, [resolvedCode]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -63,7 +54,6 @@ export default function VerifyEmail() {
     newOtp[index] = digit.slice(-1);
     setOtp(newOtp);
 
-    // Auto-focus next
     if (index < 5 && digit) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -115,7 +105,7 @@ export default function VerifyEmail() {
     if (result.success) {
       sessionStorage.removeItem(`zema_otp_${email}`);
       setMessage(result.message || 'Email verified successfully!');
-      setTimeout(() => navigate('/login'), 900);
+      setTimeout(() => navigate('/'), 900);
     } else {
       setError(result.message || 'Invalid verification code. Please try again.');
     }
@@ -138,7 +128,7 @@ export default function VerifyEmail() {
       const text = result.message || 'A new code has been sent.';
       setMessage(text);
       setCooldown(60);
-      const newCode = result.verification_code || extractSixDigit(text);
+      const newCode = result.verification_code || text.match(/\b(\d{6})\b/)?.[1] || '';
       if (newCode && newCode.length === 6) {
         sessionStorage.setItem(`zema_otp_${email}`, newCode);
         setOtp(newCode.split(''));
@@ -148,31 +138,31 @@ export default function VerifyEmail() {
     }
   };
 
+  const hasCode = resolvedCode.length === 6;
   const isComplete = otp.every((d) => d !== '');
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8 px-4">
       <div className="w-full max-w-md">
         <div className="glass-dark rounded-2xl border border-white/10 p-8 shadow-2xl">
-          {/* Mail Icon */}
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <span className="text-4xl">✉️</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white">Check your email</h2>
-            <p className="text-slate-400 text-sm mt-2">
-              Enter the 6-digit code sent to
-            </p>
-            <p className="text-white font-medium text-sm truncate">{email || 'your email'}</p>
-          </div>
-
-          {/* OTP Display (from session) */}
-          {otp.every((d) => d !== '') && (
-            <div className="mb-5 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-center">
-              <p className="text-xs text-green-300 mb-1">Code from registration</p>
-              <p className="text-2xl font-bold tracking-[0.3em] text-green-100 font-mono">
-                {otp.join('')}
+          {/* Verification Code — always at top */}
+          {hasCode && (
+            <div className="text-center mb-8">
+              <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Your verification code</p>
+              <p className="text-5xl font-bold tracking-[0.4em] text-amber-300 font-mono select-all">
+                {codeDigits.join('')}
               </p>
+              <p className="text-slate-500 text-xs mt-2">Enter this code below</p>
+            </div>
+          )}
+          {!hasCode && (
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
+                <span className="text-4xl">✉️</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white">Check your email</h2>
+              <p className="text-slate-400 text-sm mt-2">Enter the 6-digit code sent to</p>
+              <p className="text-white font-medium text-sm truncate">{email || 'your email'}</p>
             </div>
           )}
 

@@ -161,7 +161,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-16 p-8 md:p-16 text-center md:text-left">
+      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-10 pt-4 md:pt-6 pb-8 md:pb-12 px-4 md:px-8 text-center md:text-left">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/30 via-primary-400/20 to-accent-500/10 blur-3xl" />
           <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-gradient-to-tr from-accent-500/20 to-primary-400/10 blur-3xl" />
