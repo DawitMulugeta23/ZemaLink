@@ -17,10 +17,8 @@ export const playlistService = {
   },
 
   createPlaylist: async (data) => {
-    const name = typeof data === "object" ? data.name : data;
-    const formData = new FormData();
-    formData.append("name", name);
-    return await api.post("playlists", formData);
+    const payload = typeof data === "object" ? data : { name: data };
+    return await api.post("playlists", payload);
   },
 
   deletePlaylist: async (id) => {
@@ -28,7 +26,7 @@ export const playlistService = {
   },
 
   getPlaylistSongs: async (id) => {
-    const response = await api.get(`playlist-songs/${id}`);
+    const response = await api.get(`playlists/${id}/songs`);
     if (response.success && Array.isArray(response.songs)) {
       return response.songs;
     }
@@ -36,14 +34,14 @@ export const playlistService = {
   },
 
   addSongToPlaylist: async (playlistId, songId) => {
-    return await api.post("playlist/add-song", {
+    return await api.post("playlists/add-song", {
       playlist_id: playlistId,
       song_id: songId,
     });
   },
 
   removeSongFromPlaylist: async (playlistId, songId) => {
-    return await api.post("playlist/remove-song", {
+    return await api.post("playlists/remove-song", {
       playlist_id: playlistId,
       song_id: songId,
     });

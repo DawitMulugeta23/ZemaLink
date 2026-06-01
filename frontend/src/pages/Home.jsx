@@ -159,9 +159,9 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div>
       {/* Hero Section */}
-      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-10 pt-4 md:pt-6 pb-8 md:pb-12 px-4 md:px-8 text-center md:text-left">
+      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-10 pb-8 md:pb-12 text-center md:text-left">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/30 via-primary-400/20 to-accent-500/10 blur-3xl" />
           <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-gradient-to-tr from-accent-500/20 to-primary-400/10 blur-3xl" />
@@ -170,7 +170,7 @@ export default function Home() {
           <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-4 font-semibold">
             Welcome to the future of music
           </p>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-primary-400 via-primary-500 to-accent-500 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-6 bg-gradient-to-r from-primary-400 via-primary-500 to-accent-500 bg-clip-text text-transparent leading-tight">
             {user ? `Welcome back, ${user.name}` : 'Welcome to ZemaLink'}
           </h1>
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed">

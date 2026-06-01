@@ -10,6 +10,7 @@ switch ($method) {
             'all-songs' => handleAllSongs($pdo),
             'users' => handleAllUsers($pdo),
             'musicians' => handleMusicians($pdo),
+            'pending-musicians' => handlePendingMusicians($pdo),
             'payments' => handlePayments($pdo),
             'reports' => handleReports($pdo),
             'revenue' => handleRevenue($pdo),
@@ -27,7 +28,9 @@ switch ($method) {
             'delete-song' => handleAdminDeleteSong($pdo, $uploadService),
             'approve-musician' => handleApproveMusician($pdo),
             'reject-musician' => handleRejectMusician($pdo),
+            'update-role' => handleUpdateRole($pdo),
             'delete-user' => handleDeleteUser($pdo),
+            'handle-report' => handleAdminReport($pdo),
             'report-status' => handleReportStatus($pdo),
             default => api_error('Admin route not found', 404),
         };
@@ -309,6 +312,65 @@ function handleDeleteUser(PDO $pdo): void
 
     $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$userId]);
     api_response(['success' => true, 'message' => 'User deleted']);
+}
+
+function handlePendingMusicians(PDO $pdo): void
+{
+    $stmt = $pdo->query(
+        "SELECT u.*, 
+                (SELECT COUNT(*) FROM songs WHERE uploader_id = u.id) as song_count,
+                (SELECT COALESCE(SUM(plays), 0) FROM songs WHERE uploader_id = u.id) as total_plays
+         FROM users u 
+         WHERE u.role = 'musician' AND u.is_approved = 0 
+         ORDER BY u.created_at DESC"
+    );
+    api_response(['success' => true, 'musicians' => $stmt->fetchAll()]);
+}
+
+function handleUpdateRole(PDO $pdo): void
+{
+    $input = get_json_input();
+    $userId = (int) ($input['user_id'] ?? 0);
+    $role = $input['role'] ?? '';
+
+    if ($userId <= 0) {
+        api_error('User ID is required');
+    }
+
+    if (!in_array($role, ['audience', 'musician', 'admin'], true)) {
+        api_error('Invalid role');
+    }
+
+    $pdo->prepare("UPDATE users SET role = ?, is_approved = 1 WHERE id = ?")
+        ->execute([$role, $userId]);
+    api_response(['success' => true, 'message' => 'User role updated']);
+}
+
+function handleAdminReport(PDO $pdo): void
+{
+    $input = get_json_input();
+    $reportId = (int) ($input['report_id'] ?? 0);
+    $action = $input['action'] ?? '';
+
+    if ($reportId <= 0) {
+        api_error('Report ID is required');
+    }
+
+    if ($action === 'dismiss') {
+        $pdo->prepare("UPDATE reports SET status = 'dismissed' WHERE id = ?")->execute([$reportId]);
+        api_response(['success' => true, 'message' => 'Report dismissed']);
+    } elseif ($action === 'remove') {
+        $report = $pdo->prepare("SELECT song_id FROM reports WHERE id = ?");
+        $report->execute([$reportId]);
+        $row = $report->fetch();
+        if ($row) {
+            $pdo->prepare("UPDATE songs SET is_approved = 0 WHERE id = ?")->execute([$row['song_id']]);
+        }
+        $pdo->prepare("UPDATE reports SET status = 'reviewed' WHERE id = ?")->execute([$reportId]);
+        api_response(['success' => true, 'message' => 'Song removed and report reviewed']);
+    } else {
+        api_error('Invalid action');
+    }
 }
 
 function handleReportStatus(PDO $pdo): void

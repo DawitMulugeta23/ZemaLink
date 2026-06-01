@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
+import { api } from "../services/api";
 import { playlistService } from "../services/playlistService";
 import { songService } from "../services/songService";
 import { DEFAULT_COVER } from "../constants";
@@ -26,10 +27,9 @@ function PlaylistDetail() {
   const loadPlaylist = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await playlistService.getPlaylists();
-      const found = (res.playlists || []).find((p) => String(p.id) === String(id));
-      if (found) {
-        setPlaylist(found);
+      const res = await api.get(`playlists/${id}`);
+      if (res.success && res.playlist) {
+        setPlaylist(res.playlist);
         const plSongs = await playlistService.getPlaylistSongs(id);
         setSongs(Array.isArray(plSongs) ? plSongs : []);
       } else {
@@ -154,7 +154,7 @@ function PlaylistDetail() {
     }
   };
 
-  const isOwner = user && playlist && (String(playlist.user_id) === String(user.id) || String(playlist.musician_id) === String(user.id));
+  const isOwner = user && playlist && String(playlist.user_id) === String(user.id);
 
   if (loading) {
     return (
@@ -178,7 +178,7 @@ function PlaylistDetail() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+    <div className="max-w-7xl mx-auto pb-4">
       <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-6 md:p-8 mb-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-purple-500/15 via-cyan-500/8 to-transparent blur-3xl pointer-events-none" />
         <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">

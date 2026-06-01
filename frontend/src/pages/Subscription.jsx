@@ -128,7 +128,7 @@ function Subscription() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 py-4">
+    <div className="max-w-6xl mx-auto pb-4">
       <div className="text-center mb-10">
         <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
           Choose Your Plan

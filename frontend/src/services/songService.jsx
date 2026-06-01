@@ -138,7 +138,7 @@ export const songService = {
   },
 
   aiSearch: async (query) => {
-    return await api.get(`songs/ai-search?q=${encodeURIComponent(query)}`);
+    return await api.get(`ai-search?q=${encodeURIComponent(query)}`);
   },
 
   reportSong: async (songId, reason) => {
@@ -146,8 +146,11 @@ export const songService = {
   },
 
   search: async (query) => {
-    const response = await api.get(`songs?search=${encodeURIComponent(query)}`);
-    return response.data || [];
+    const response = await api.get(`songs/search?q=${encodeURIComponent(query)}`);
+    if (response.success && Array.isArray(response.songs)) {
+      return response.songs.map(mapSong);
+    }
+    return [];
   },
 
   getLikes: async () => {
@@ -179,9 +182,7 @@ export const songService = {
   },
 
   createPlaylist: async (name) => {
-    const formData = new FormData();
-    formData.append("name", name);
-    return await api.post("playlists", formData);
+    return await api.post("playlists", { name, is_public: 1 });
   },
 
   deletePlaylist: async (playlistId) => {
@@ -189,21 +190,21 @@ export const songService = {
   },
 
   addSongToPlaylist: async (playlistId, songId) => {
-    return await api.post("playlist/add-song", {
+    return await api.post("playlists/add-song", {
       playlist_id: playlistId,
       song_id: songId,
     });
   },
 
   removeSongFromPlaylist: async (playlistId, songId) => {
-    return await api.post("playlist/remove-song", {
+    return await api.post("playlists/remove-song", {
       playlist_id: playlistId,
       song_id: songId,
     });
   },
 
   getPlaylistSongs: async (playlistId) => {
-    const response = await api.get(`playlist-songs/${playlistId}`);
+    const response = await api.get(`playlists/${playlistId}/songs`);
     if (response.success && Array.isArray(response.songs)) {
       return response.songs.map(mapSong);
     }

@@ -97,7 +97,7 @@ function Events() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 px-4 md:px-8">
+    <div className="max-w-7xl mx-auto pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-extrabold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">

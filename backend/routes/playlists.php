@@ -2,8 +2,9 @@
 
 switch ($method) {
     case 'GET':
-        if (is_numeric($id) && $sub === 'songs' && $subId === '') {
-            $playlistId = (int) $id;
+        // GET /api/playlists/{id}/songs
+        if (is_numeric($sub) && $subId === 'songs') {
+            $playlistId = (int) $sub;
 
             $stmt = $pdo->prepare("SELECT * FROM playlists WHERE id = ?");
             $stmt->execute([$playlistId]);
@@ -25,7 +26,7 @@ switch ($method) {
                  FROM playlist_songs ps
                  JOIN songs s ON ps.song_id = s.id
                  WHERE ps.playlist_id = ? AND s.is_approved = 1
-                 ORDER BY ps.created_at ASC"
+                 ORDER BY ps.position ASC, ps.created_at ASC"
             );
             $stmt->execute([$playlistId]);
             $songs = $stmt->fetchAll();
@@ -33,8 +34,9 @@ switch ($method) {
             api_response(['success' => true, 'playlist' => $playlist, 'songs' => $songs]);
         }
 
-        if (is_numeric($id) && $sub === '') {
-            $playlistId = (int) $id;
+        // GET /api/playlists/{id}
+        if (is_numeric($sub) && $subId === '') {
+            $playlistId = (int) $sub;
             $stmt = $pdo->prepare("SELECT * FROM playlists WHERE id = ?");
             $stmt->execute([$playlistId]);
             $playlist = $stmt->fetch();
@@ -43,8 +45,8 @@ switch ($method) {
                 api_error('Playlist not found', 404);
             }
 
-            $userId = $_SESSION['user_id'] ?? 0;
-            if ((int) $playlist['user_id'] !== $userId && !$playlist['is_public']) {
+            $currentUserId = $_SESSION['user_id'] ?? 0;
+            if ((int) $playlist['user_id'] !== $currentUserId && !$playlist['is_public']) {
                 api_error('Access denied', 403);
             }
 
@@ -55,9 +57,10 @@ switch ($method) {
             api_response(['success' => true, 'playlist' => $playlist]);
         }
 
+        // GET /api/playlists
         if ($sub === '') {
-            $userId = $_SESSION['user_id'] ?? 0;
-            if ($userId === 0) {
+            $currentUserId = $_SESSION['user_id'] ?? 0;
+            if ($currentUserId === 0) {
                 api_response(['success' => true, 'playlists' => []]);
             }
 
@@ -68,15 +71,17 @@ switch ($method) {
                  WHERE p.user_id = ?
                  ORDER BY p.created_at DESC"
             );
-            $stmt->execute([$userId]);
+            $stmt->execute([$currentUserId]);
             api_response(['success' => true, 'playlists' => $stmt->fetchAll()]);
         }
+
         api_error('Playlist route not found', 404);
 
     case 'POST':
         $user = $auth->authenticate();
 
-        if ($sub === 'create') {
+        // POST /api/playlists (create) — also accept /api/playlists/create
+        if ($sub === '' || $sub === 'create') {
             $input = get_json_input();
             $name = trim($input['name'] ?? '');
             $isPublic = !empty($input['is_public']) ? 1 : 0;
@@ -85,7 +90,7 @@ switch ($method) {
                 api_error('Playlist name is required');
             }
 
-            $id = $pdo->prepare("INSERT INTO playlists (name, user_id, is_public) VALUES (?, ?, ?)")
+            $pdo->prepare("INSERT INTO playlists (name, user_id, is_public) VALUES (?, ?, ?)")
                 ->execute([$name, $user['id'], $isPublic]);
 
             api_response(['success' => true, 'id' => $pdo->lastInsertId()]);
@@ -106,8 +111,12 @@ switch ($method) {
                 api_error('Playlist not found', 404);
             }
 
-            $pdo->prepare("INSERT IGNORE INTO playlist_songs (playlist_id, song_id) VALUES (?, ?)")
-                ->execute([$playlistId, $songId]);
+            $maxPos = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 FROM playlist_songs WHERE playlist_id = ?");
+            $maxPos->execute([$playlistId]);
+            $nextPos = (int) $maxPos->fetchColumn();
+
+            $pdo->prepare("INSERT IGNORE INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)")
+                ->execute([$playlistId, $songId, $nextPos]);
 
             api_response(['success' => true, 'message' => 'Song added to playlist']);
         }
@@ -139,6 +148,7 @@ switch ($method) {
     case 'PUT':
         $user = $auth->authenticate();
 
+        // DELETE /api/playlists/{id}
         if ($method === 'DELETE' && is_numeric($sub)) {
             $playlistId = (int) $sub;
 
@@ -154,6 +164,7 @@ switch ($method) {
             api_response(['success' => true, 'message' => 'Playlist deleted']);
         }
 
+        // PUT /api/playlists/{id}
         if ($method === 'PUT' && is_numeric($sub)) {
             $playlistId = (int) $sub;
             $input = get_json_input();

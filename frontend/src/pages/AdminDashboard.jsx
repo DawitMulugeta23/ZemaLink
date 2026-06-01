@@ -132,9 +132,9 @@ function AdminDashboard() {
   };
 
   const updateRole = async (id, role) => {
-    await adminService.updateRole(id, role);
-    toast.success("Role updated");
-    loadAll();
+    const r = await adminService.updateRole(id, role);
+    if (r.success) { toast.success("Role updated"); loadAll(); }
+    else toast.error(r.message || "Failed to update role");
   };
 
   const setReportStatus = async (id, status) => {

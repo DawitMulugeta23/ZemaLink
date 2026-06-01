@@ -98,7 +98,7 @@ function Playlists() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+    <div className="max-w-7xl mx-auto pb-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">

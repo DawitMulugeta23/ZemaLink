@@ -166,7 +166,7 @@ function LiveStreams() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto pb-12 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto pb-12">
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
             Live Streams

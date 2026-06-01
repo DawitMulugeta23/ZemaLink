@@ -274,7 +274,7 @@ function StreamView() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 px-4 md:px-8">
+    <div className="max-w-7xl mx-auto pb-12">
       <div className="mb-4">
         <Link to="/live-streams" className="text-xs font-semibold text-slate-500 hover:text-white flex items-center gap-1.5 transition">
           ← Back to Live Streams

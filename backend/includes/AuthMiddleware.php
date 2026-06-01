@@ -19,7 +19,7 @@ class AuthMiddleware
 
         $stmt = $this->pdo->prepare(
             "SELECT id, name, email, role, is_approved, subscription, subscription_expires, 
-                    email_verified, avatar, created_at 
+                    email_verified, profile_image, created_at 
              FROM users WHERE id = ?"
         );
         $stmt->execute([$userId]);
@@ -42,7 +42,7 @@ class AuthMiddleware
 
         $stmt = $this->pdo->prepare(
             "SELECT id, name, email, role, is_approved, subscription, subscription_expires, 
-                    email_verified, avatar, created_at 
+                    email_verified, profile_image, created_at 
              FROM users WHERE id = ?"
         );
         $stmt->execute([$userId]);

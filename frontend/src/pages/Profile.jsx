@@ -87,7 +87,7 @@ function Profile() {
   const initials = getInitials(user.name);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 md:px-8 py-4">
+    <div className="max-w-4xl mx-auto pb-4">
       <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden shadow-2xl">
         <div className="h-40 md:h-52 bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 relative">
           <div className="absolute inset-0 bg-black/10" />

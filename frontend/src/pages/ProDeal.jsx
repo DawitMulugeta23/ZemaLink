@@ -179,7 +179,7 @@ function ProDeal() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
+    <div className="max-w-3xl mx-auto pb-8 space-y-5">
       <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-8">
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">💎</div>

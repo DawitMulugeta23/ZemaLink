@@ -41,6 +41,7 @@ function MusicianDashboard() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingSong, setEditingSong] = useState(null);
+  const [pendingApproval, setPendingApproval] = useState(false);
 
   // Upload Song form
   const [uploadForm, setUploadForm] = useState({
@@ -92,6 +93,12 @@ function MusicianDashboard() {
         eventService.getMusicianEvents(),
         liveStreamService.getMusicianStreams(),
       ]);
+
+      if (ms.status === 403) {
+        setPendingApproval(true);
+        setLoading(false);
+        return;
+      }
 
       if (ms.success) setSongs(ms.songs || []);
       if (st.success) setStats(st.stats);
@@ -247,6 +254,24 @@ function MusicianDashboard() {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="w-12 h-12 border-4 border-slate-200 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (pendingApproval) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-4">
+        <div className="glass-dark rounded-2xl border border-amber-500/20 p-8 md:p-12 text-center">
+          <div className="text-6xl mb-4">⏳</div>
+          <h2 className="text-2xl font-bold text-white mb-3">Account Pending Approval</h2>
+          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+            Your musician account is currently under review. You will be able to upload songs and manage your studio once an admin approves your account.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-medium">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            Awaiting Admin Approval
+          </div>
+        </div>
       </div>
     );
   }

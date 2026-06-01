@@ -163,4 +163,32 @@ if ($method === 'GET' && is_numeric($sub) && $subId === '') {
     api_response(['success' => true, 'data' => $song]);
 }
 
+if ($method === 'GET' && $sub === 'related' && is_numeric($subId)) {
+    $songId = (int) $subId;
+
+    $stmt = $pdo->prepare("SELECT genre, uploader_id FROM songs WHERE id = ?");
+    $stmt->execute([$songId]);
+    $song = $stmt->fetch();
+
+    if (!$song) {
+        api_response(['success' => true, 'songs' => []]);
+    }
+
+    $genre = $song['genre'];
+    $uploaderId = $song['uploader_id'];
+
+    $stmt = $pdo->prepare(
+        "SELECT s.*, 
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                COALESCE(s.rating, 0) as rating
+         FROM songs s 
+         WHERE s.id != ? AND s.is_approved = 1 
+           AND (s.genre = ? OR s.uploader_id = ?)
+         ORDER BY s.rating DESC, s.plays DESC 
+         LIMIT 10"
+    );
+    $stmt->execute([$songId, $genre, $uploaderId]);
+    api_response(['success' => true, 'songs' => $stmt->fetchAll()]);
+}
+
 api_error('Songs route not found', 404);

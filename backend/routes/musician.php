@@ -19,10 +19,26 @@ switch ($method) {
     case 'POST':
         match ($sub) {
             'upload-song' => handleUploadSong($pdo, $userId, $uploadService),
-            'update-song' => handleUpdateSong($pdo, $userId, $uploadService),
-            'delete-song' => handleDeleteSong($pdo, $userId),
+            'update-song' => handleUpdateSong($pdo, $userId, $uploadService, $subId),
+            'delete-song' => handleDeleteSong($pdo, $userId, $uploadService, $subId),
             default => api_error('Musician route not found', 404),
         };
+        break;
+
+    case 'PUT':
+        if ($sub === 'update-song' && is_numeric($subId)) {
+            handleUpdateSong($pdo, $userId, $uploadService, $subId);
+        } else {
+            api_error('Musician route not found', 404);
+        }
+        break;
+
+    case 'DELETE':
+        if ($sub === 'delete-song' && is_numeric($subId)) {
+            handleDeleteSong($pdo, $userId, $uploadService, $subId);
+        } else {
+            api_error('Musician route not found', 404);
+        }
         break;
 
     default:
@@ -120,7 +136,7 @@ function handleMyStreams(PDO $pdo, int $userId): void
 function handleMusicianProfile(PDO $pdo, int $userId): void
 {
     $stmt = $pdo->prepare(
-        "SELECT u.id, u.name, u.email, u.avatar, u.created_at as member_since,
+        "SELECT u.id, u.name, u.email, u.profile_image as avatar, u.created_at as member_since,
                 (SELECT COUNT(*) FROM songs WHERE uploader_id = u.id AND is_approved = 1) as song_count,
                 (SELECT COALESCE(SUM(plays), 0) FROM songs WHERE uploader_id = u.id) as total_plays
          FROM users u WHERE u.id = ?"
@@ -155,12 +171,13 @@ function handleUploadSong(PDO $pdo, int $userId, UploadService $uploadService): 
         api_error('Please set a valid price for premium content');
     }
 
-    if (!isset($_FILES['media_file']) || $_FILES['media_file']['error'] !== UPLOAD_ERR_OK) {
+    $mediaFile = $_FILES['media_file'] ?? $_FILES['file'] ?? null;
+    if (!$mediaFile || $mediaFile['error'] !== UPLOAD_ERR_OK) {
         api_error('Media file is required');
     }
 
     $uploadType = $mediaType === 'video' ? 'video' : 'audio';
-    $uploadResult = $uploadService->upload($_FILES['media_file'], $uploadType);
+    $uploadResult = $uploadService->upload($mediaFile, $uploadType);
 
     if (!$uploadResult['success']) {
         api_error($uploadResult['message'] ?? 'Upload failed');
@@ -169,8 +186,9 @@ function handleUploadSong(PDO $pdo, int $userId, UploadService $uploadService): 
     $mediaPath = $uploadResult['url'];
 
     $coverPath = null;
-    if (isset($_FILES['cover_image']) && $_FILES['cover_image']['error'] === UPLOAD_ERR_OK) {
-        $coverResult = $uploadService->upload($_FILES['cover_image'], 'image');
+    $coverFile = $_FILES['cover_image'] ?? $_FILES['cover'] ?? null;
+    if ($coverFile && $coverFile['error'] === UPLOAD_ERR_OK) {
+        $coverResult = $uploadService->upload($coverFile, 'image');
         if ($coverResult['success']) {
             $coverPath = $coverResult['url'];
         }
@@ -214,14 +232,13 @@ function handleUploadSong(PDO $pdo, int $userId, UploadService $uploadService): 
     ]);
 }
 
-function handleUpdateSong(PDO $pdo, int $userId, UploadService $uploadService): void
+function handleUpdateSong(PDO $pdo, int $userId, UploadService $uploadService, string $subId): void
 {
-    $input = get_json_input() + $_POST;
-    $songId = (int) ($id !== 'update-song' ? $id : ($input['song_id'] ?? 0));
-    if (is_numeric($sub)) {
-        $songId = (int) $sub;
+    $songId = is_numeric($subId) ? (int) $subId : 0;
+    if ($songId <= 0) {
+        $input = get_json_input() + $_POST;
+        $songId = (int) ($input['song_id'] ?? 0);
     }
-
     if ($songId <= 0) {
         api_error('Song ID is required');
     }
@@ -234,6 +251,7 @@ function handleUpdateSong(PDO $pdo, int $userId, UploadService $uploadService): 
         api_error('Song not found or unauthorized', 404);
     }
 
+    $input = get_json_input() + $_POST;
     $title = trim($input['title'] ?? $song['title']);
     $artist = trim($input['artist'] ?? $song['artist']);
     $album = trim($input['album'] ?? $song['album']);
@@ -246,16 +264,18 @@ function handleUpdateSong(PDO $pdo, int $userId, UploadService $uploadService): 
     }
 
     $filePath = $song['file_path'];
-    if (isset($_FILES['media_file']) && $_FILES['media_file']['error'] === UPLOAD_ERR_OK) {
-        $uploadResult = $uploadService->upload($_FILES['media_file'], $song['media_type'] ?? 'audio');
+    $mediaFile = $_FILES['media_file'] ?? $_FILES['file'] ?? null;
+    if ($mediaFile && $mediaFile['error'] === UPLOAD_ERR_OK) {
+        $uploadResult = $uploadService->upload($mediaFile, $song['media_type'] ?? 'audio');
         if ($uploadResult['success']) {
             $filePath = $uploadResult['url'];
         }
     }
 
     $coverPath = $song['cover_image'];
-    if (isset($_FILES['cover_image']) && $_FILES['cover_image']['error'] === UPLOAD_ERR_OK) {
-        $coverResult = $uploadService->upload($_FILES['cover_image'], 'image');
+    $coverFile = $_FILES['cover_image'] ?? $_FILES['cover'] ?? null;
+    if ($coverFile && $coverFile['error'] === UPLOAD_ERR_OK) {
+        $coverResult = $uploadService->upload($coverFile, 'image');
         if ($coverResult['success']) {
             $coverPath = $coverResult['url'];
         }
@@ -271,14 +291,13 @@ function handleUpdateSong(PDO $pdo, int $userId, UploadService $uploadService): 
     api_response(['success' => true, 'message' => 'Song updated. Pending approval.']);
 }
 
-function handleDeleteSong(PDO $pdo, int $userId): void
+function handleDeleteSong(PDO $pdo, int $userId, UploadService $uploadService, string $subId): void
 {
-    $input = get_json_input();
-    $songId = (int) ($input['song_id'] ?? 0);
-    if (is_numeric($sub)) {
-        $songId = (int) $sub;
+    $songId = is_numeric($subId) ? (int) $subId : 0;
+    if ($songId <= 0) {
+        $input = get_json_input();
+        $songId = (int) ($input['song_id'] ?? 0);
     }
-
     if ($songId <= 0) {
         api_error('Song ID is required');
     }
