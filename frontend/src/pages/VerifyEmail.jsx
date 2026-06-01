@@ -1,188 +1,250 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function extractSixDigit(text) {
-  if (!text) return "";
+  if (!text) return '';
   const m =
     text.match(/(?:OTP code:|verification code:?|code:?)\s*(\d{6})/i) ||
     text.match(/\b(\d{6})\b/);
-  return m ? m[1] : "";
+  return m ? m[1] : '';
 }
 
-function VerifyEmail() {
+export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { verifyCode, resendCode, pendingVerificationEmail } = useAuth();
-  const [code, setCode] = useState("");
-  const [msg, setMsg] = useState("");
-  const [error, setError] = useState("");
+
+  const [otp, setOtp] = useState(Array(6).fill(''));
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
-  const [otpHint, setOtpHint] = useState(() => searchParams.get("hint") || "");
-  const [shownCode, setShownCode] = useState("");
+  const [cooldown, setCooldown] = useState(0);
 
-  const email = useMemo(
-    () =>
-      (searchParams.get("email") || pendingVerificationEmail || "")
-        .toLowerCase()
-        .trim(),
-    [searchParams, pendingVerificationEmail],
-  );
+  const inputRefs = useRef([]);
 
+  const email = (
+    searchParams.get('email') || pendingVerificationEmail || ''
+  ).toLowerCase().trim();
+
+  // Auto-fill OTP from hint/sessionStorage
   useEffect(() => {
-    const hintRaw = searchParams.get("hint") || "";
-    let decodedHint = "";
-    try {
-      decodedHint = decodeURIComponent(hintRaw);
-    } catch {
-      decodedHint = hintRaw;
-    }
-    const fromQuery =
-      searchParams.get("code") || extractSixDigit(decodedHint);
-    const stored = email ? sessionStorage.getItem(`zema_otp_${email}`) : "";
+    const hintRaw = searchParams.get('hint') || '';
+    let decodedHint = '';
+    try { decodedHint = decodeURIComponent(hintRaw); } catch { decodedHint = hintRaw; }
+    const fromQuery = searchParams.get('code') || extractSixDigit(decodedHint);
+    const stored = email ? sessionStorage.getItem(`zema_otp_${email}`) : '';
     const resolved = fromQuery || stored;
-    if (resolved) {
-      setShownCode(resolved);
-      setCode((prev) => (prev.length >= 6 ? prev : resolved));
+    if (resolved && resolved.length === 6) {
+      const digits = resolved.split('');
+      setOtp(digits);
     }
   }, [email, searchParams]);
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setMsg("");
-    if (!email) {
-      setError("Email is missing. Please register again.");
+  // Countdown timer for resend
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleChange = (index, value) => {
+    const digit = value.replace(/\D/g, '');
+    if (!digit && otp[index] !== '') {
+      const newOtp = [...otp];
+      newOtp[index] = '';
+      setOtp(newOtp);
       return;
     }
-    if (!/^\d{6}$/.test(code.trim())) {
-      setError("Enter the 6-digit verification code.");
-      return;
-    }
-    setBusy(true);
-    const result = await verifyCode(email, code.trim());
-    setBusy(false);
-    if (result.success) {
-      sessionStorage.removeItem(`zema_otp_${email}`);
-      setMsg(result.message || "Email verified. Please sign in.");
-      setTimeout(() => navigate("/login"), 900);
-    } else {
-      setError(result.message || "Verification failed");
+    if (!digit) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = digit.slice(-1);
+    setOtp(newOtp);
+
+    // Auto-focus next
+    if (index < 5 && digit) {
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const resend = async () => {
-    setError("");
-    setMsg("");
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowLeft' && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowRight' && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length > 0) {
+      const newOtp = Array(6).fill('');
+      pasted.split('').forEach((d, i) => { newOtp[i] = d; });
+      setOtp(newOtp);
+      const nextIndex = Math.min(pasted.length, 5);
+      inputRefs.current[nextIndex]?.focus();
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+
+    const code = otp.join('');
     if (!email) {
-      setError("Email is missing. Please register again.");
+      setError('Email is missing. Please register again.');
       return;
     }
+    if (code.length !== 6) {
+      setError('Please enter the complete 6-digit code.');
+      return;
+    }
+
+    setBusy(true);
+    const result = await verifyCode(email, code);
+    setBusy(false);
+
+    if (result.success) {
+      sessionStorage.removeItem(`zema_otp_${email}`);
+      setMessage(result.message || 'Email verified successfully!');
+      setTimeout(() => navigate('/login'), 900);
+    } else {
+      setError(result.message || 'Invalid verification code. Please try again.');
+    }
+  };
+
+  const handleResend = async () => {
+    if (cooldown > 0 || resending) return;
+    setError('');
+    setMessage('');
+    if (!email) {
+      setError('Email is missing. Please register again.');
+      return;
+    }
+
     setResending(true);
     const result = await resendCode(email);
     setResending(false);
+
     if (result.success) {
-      const text = result.message || "A new code has been sent.";
-      setMsg(text);
+      const text = result.message || 'A new code has been sent.';
+      setMessage(text);
+      setCooldown(60);
       const newCode = result.verification_code || extractSixDigit(text);
-      if (newCode) {
+      if (newCode && newCode.length === 6) {
         sessionStorage.setItem(`zema_otp_${email}`, newCode);
-        setShownCode(newCode);
-        setCode(newCode);
+        setOtp(newCode.split(''));
       }
-      if (/OTP code:/i.test(text)) {
-        setOtpHint(text);
-      }
+    } else {
+      setError(result.message || 'Could not resend code');
     }
-    else setError(result.message || "Could not resend code");
   };
+
+  const isComplete = otp.every((d) => d !== '');
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8 px-4">
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-white text-center mb-2">
-          Verify your email
-        </h1>
-        <p className="text-sm text-white/65 text-center mb-6">
-          Enter the 6-digit code sent to
-          <span className="text-white font-medium"> {email || "your email"}</span>
-        </p>
-        {shownCode && (
-          <div className="mb-5 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-5 text-center">
-            <p className="text-xs uppercase tracking-wider text-emerald-100/90 mb-2">
-              Your verification code
+      <div className="w-full max-w-md">
+        <div className="glass-dark rounded-2xl border border-white/10 p-8 shadow-2xl">
+          {/* Mail Icon */}
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
+              <span className="text-4xl">✉️</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white">Check your email</h2>
+            <p className="text-slate-400 text-sm mt-2">
+              Enter the 6-digit code sent to
             </p>
-            <p
-              className="text-3xl sm:text-4xl font-bold tracking-[0.4em] pl-[0.2em] text-emerald-50 font-mono"
-              aria-live="polite"
+            <p className="text-white font-medium text-sm truncate">{email || 'your email'}</p>
+          </div>
+
+          {/* OTP Display (from session) */}
+          {otp.every((d) => d !== '') && (
+            <div className="mb-5 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-center">
+              <p className="text-xs text-green-300 mb-1">Code from registration</p>
+              <p className="text-2xl font-bold tracking-[0.3em] text-green-100 font-mono">
+                {otp.join('')}
+              </p>
+            </div>
+          )}
+
+          {/* Error / Message */}
+          {error && (
+            <div className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm text-center">
+              {error}
+            </div>
+          )}
+          {message && (
+            <div className="mb-5 p-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-300 text-sm text-center">
+              {message}
+            </div>
+          )}
+
+          {/* OTP Input Form */}
+          <form onSubmit={handleSubmit}>
+            <div className="flex gap-2 justify-center mb-6" onPaste={handlePaste}>
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { inputRefs.current[index] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onFocus={(e) => e.target.select()}
+                  className="w-12 h-14 text-center text-xl font-bold bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  aria-label={`Digit ${index + 1}`}
+                  required
+                />
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy || !isComplete}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              {shownCode}
-            </p>
-            <p className="mt-2 text-xs text-emerald-100/75">
-              Same code is pre-filled below. Copy it if your email is delayed.
-            </p>
-          </div>
-        )}
-        {otpHint && !shownCode && (
-          <div className="mb-4 rounded-xl border border-amber-400/50 bg-amber-500/15 p-3">
-            <p className="text-xs text-amber-100">OTP helper:</p>
-            <p className="mt-1 text-sm font-semibold tracking-wide text-amber-50">
-              {otpHint}
-            </p>
-          </div>
-        )}
+              {busy ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Verifying...
+                </span>
+              ) : (
+                'Verify Code'
+              )}
+            </button>
+          </form>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/50 text-red-200 text-sm text-center">
-            {error}
+          {/* Resend & Back */}
+          <div className="mt-6 flex items-center justify-between text-sm">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending || cooldown > 0}
+              className="text-slate-400 hover:text-primary-400 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {resending
+                ? 'Sending...'
+                : cooldown > 0
+                  ? `Resend in ${cooldown}s`
+                  : 'Resend code'}
+            </button>
+            <Link to="/login" className="text-slate-500 hover:text-white transition">
+              Back to login
+            </Link>
           </div>
-        )}
-        {msg && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-100 text-sm text-center">
-            {msg}
-          </div>
-        )}
-
-        <form onSubmit={submit} className="space-y-4">
-          <label className="block text-sm text-white/75">
-            Verification code
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-              className="mt-2 w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-white tracking-[0.35em] text-center text-lg"
-              required
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold disabled:opacity-50"
-          >
-            {busy ? "Verifying..." : "Verify code"}
-          </button>
-        </form>
-
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <button
-            type="button"
-            onClick={resend}
-            disabled={resending}
-            className="text-amber-200 hover:text-amber-100 disabled:opacity-50"
-          >
-            {resending ? "Sending..." : "Resend code"}
-          </button>
-          <Link to="/login" className="text-white/70 hover:text-white">
-            Back to login
-          </Link>
         </div>
       </div>
     </div>
   );
 }
-
-export default VerifyEmail;

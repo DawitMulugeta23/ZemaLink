@@ -1,138 +1,180 @@
 <?php
-class RatingService {
-    private $pdo;
-    
-    public function __construct($pdo) {
+
+class RatingService
+{
+    private PDO $pdo;
+
+    private const WEIGHT_PLAYS = 0.40;
+    private const WEIGHT_LIKES = 0.35;
+    private const WEIGHT_FRESHNESS = 0.25;
+
+    private const MAX_SCORE = 5.0;
+
+    public function __construct(PDO $pdo)
+    {
         $this->pdo = $pdo;
     }
-    
-    /**
-     * Calculate song rating based ONLY on system data:
-     * - Number of plays (40% weight)
-     * - Number of likes (35% weight)
-     * - Upload date freshness (25% weight)
-     * 
-     * Rating formula: (plays_score * 0.4) + (likes_score * 0.35) + (freshness_score * 0.25)
-     * Final rating is between 0-5 stars
-     */
-    public function calculateSongRating($songId) {
-        // Get song stats
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                s.id,
-                s.plays,
-                s.created_at,
-                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count
-            FROM songs s 
-            WHERE s.id = ?
-        ");
+
+    public function calculateSongRating(int $songId): float
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT s.plays, s.created_at, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count
+             FROM songs s WHERE s.id = ?"
+        );
         $stmt->execute([$songId]);
         $song = $stmt->fetch();
-        
-        if (!$song) return 0;
-        
+
+        if (!$song) {
+            return 0.0;
+        }
+
         $plays = (int) $song['plays'];
         $likesCount = (int) $song['likes_count'];
         $createdAt = strtotime($song['created_at']);
         $daysSinceUpload = max(0, (time() - $createdAt) / 86400);
-        
-        // Calculate plays score (0-5)
-        // 0 plays = 0, 1000+ plays = 5
-        $playsScore = min(5, $plays / 200);
-        
-        // Calculate likes score (0-5)
-        // 0 likes = 0, 100+ likes = 5
-        $likesScore = min(5, $likesCount / 20);
-        
-        // Calculate freshness score (0-5)
-        // New songs (0 days) = 5, Old songs (30+ days) = 0
-        $freshnessScore = max(0, 5 - ($daysSinceUpload / 6));
-        $freshnessScore = min(5, $freshnessScore);
-        
-        // Weighted calculation
-        $finalRating = (
-            ($playsScore * 0.40) + 
-            ($likesScore * 0.35) + 
-            ($freshnessScore * 0.25)
-        );
-        
-        // Round to 1 decimal place
-        return round($finalRating, 1);
+
+        $playsScore = min(self::MAX_SCORE, $plays / 200);
+        $likesScore = min(self::MAX_SCORE, $likesCount / 20);
+        $freshnessScore = min(self::MAX_SCORE, max(0, self::MAX_SCORE - ($daysSinceUpload / 6)));
+
+        $finalRating = ($playsScore * self::WEIGHT_PLAYS)
+                     + ($likesScore * self::WEIGHT_LIKES)
+                     + ($freshnessScore * self::WEIGHT_FRESHNESS);
+
+        return round(min(self::MAX_SCORE, $finalRating), 1);
     }
-    
-    /**
-     * Update song rating in database
-     */
-    public function updateSongRating($songId) {
+
+    public function getTrendingSongs(int $limit = 20): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT s.*, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                    COALESCE(s.rating, 0) as rating,
+                    (SELECT COUNT(*) FROM listening_history 
+                     WHERE song_id = s.id AND played_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as recent_plays
+             FROM songs s 
+             WHERE s.is_approved = 1
+             HAVING recent_plays > 0 OR rating > 0
+             ORDER BY (recent_plays * 0.6 + rating * 20 * 0.4) DESC, s.created_at DESC
+             LIMIT ?"
+        );
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    }
+
+    public function getTopRatedSongs(int $limit = 20): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT s.*, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                    COALESCE(s.rating, 0) as rating,
+                    s.plays as total_plays
+             FROM songs s 
+             WHERE s.is_approved = 1 AND COALESCE(s.rating, 0) > 0
+             ORDER BY s.rating DESC, s.plays DESC 
+             LIMIT ?"
+        );
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    }
+
+    public function updateAllRatings(): int
+    {
+        $stmt = $this->pdo->query("SELECT id FROM songs");
+        $songs = $stmt->fetchAll();
+        $count = 0;
+
+        foreach ($songs as $song) {
+            $rating = $this->calculateSongRating((int) $song['id']);
+            $updateStmt = $this->pdo->prepare("UPDATE songs SET rating = ? WHERE id = ?");
+            $updateStmt->execute([$rating, (int) $song['id']]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    public function updateSongRating(int $songId): float
+    {
         $rating = $this->calculateSongRating($songId);
         $stmt = $this->pdo->prepare("UPDATE songs SET rating = ? WHERE id = ?");
         $stmt->execute([$rating, $songId]);
         return $rating;
     }
-    
-    /**
-     * Update all songs ratings
-     */
-    public function updateAllRatings() {
-        $stmt = $this->pdo->query("SELECT id FROM songs");
-        $songs = $stmt->fetchAll();
-        
-        foreach ($songs as $song) {
-            $this->updateSongRating($song['id']);
+
+    public function getRatingBreakdown(int $songId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT s.plays, s.rating, s.created_at,
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count
+             FROM songs s WHERE s.id = ?"
+        );
+        $stmt->execute([$songId]);
+        $song = $stmt->fetch();
+
+        if (!$song) {
+            return null;
         }
-        
-        return count($songs);
+
+        $plays = (int) $song['plays'];
+        $likesCount = (int) $song['likes_count'];
+        $daysSinceUpload = max(0, (time() - strtotime($song['created_at'])) / 86400);
+
+        return [
+            'total_rating' => (float) $song['rating'],
+            'plays_score' => round(min(self::MAX_SCORE, $plays / 200), 2),
+            'likes_score' => round(min(self::MAX_SCORE, $likesCount / 20), 2),
+            'freshness_score' => round(min(self::MAX_SCORE, max(0, self::MAX_SCORE - ($daysSinceUpload / 6))), 2),
+            'plays_count' => $plays,
+            'likes_count' => $likesCount,
+            'days_since_upload' => (int) round($daysSinceUpload),
+            'weights' => [
+                'plays' => self::WEIGHT_PLAYS,
+                'likes' => self::WEIGHT_LIKES,
+                'freshness' => self::WEIGHT_FRESHNESS,
+            ],
+        ];
     }
-    
-    /**
-     * Get top rated songs
-     */
-    public function getTopRated($limit = 10) {
-        $stmt = $this->pdo->prepare("
-            SELECT s.*, 
-                   (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count
-            FROM songs s 
-            WHERE s.is_approved = 1 
-            ORDER BY s.rating DESC, s.plays DESC 
-            LIMIT ?
-        ");
+
+    public function getNewReleases(int $limit = 20): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT s.*, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                    COALESCE(s.rating, 0) as rating
+             FROM songs s 
+             WHERE s.is_approved = 1
+             ORDER BY s.created_at DESC 
+             LIMIT ?"
+        );
         $stmt->execute([$limit]);
         return $stmt->fetchAll();
     }
-    
-    /**
-     * Get rating breakdown for a song
-     */
-    public function getRatingBreakdown($songId) {
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                s.plays,
-                s.rating,
-                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                s.created_at
-            FROM songs s 
-            WHERE s.id = ?
-        ");
-        $stmt->execute([$songId]);
-        $song = $stmt->fetch();
-        
-        if (!$song) return null;
-        
-        $playsScore = min(5, $song['plays'] / 200);
-        $likesScore = min(5, $song['likes_count'] / 20);
-        
-        $daysSinceUpload = max(0, (time() - strtotime($song['created_at'])) / 86400);
-        $freshnessScore = max(0, min(5, 5 - ($daysSinceUpload / 6)));
-        
-        return [
-            'total_rating' => (float) $song['rating'],
-            'plays_score' => round($playsScore, 1),
-            'likes_score' => round($likesScore, 1),
-            'freshness_score' => round($freshnessScore, 1),
-            'plays_count' => (int) $song['plays'],
-            'likes_count' => (int) $song['likes_count'],
-            'days_since_upload' => round($daysSinceUpload, 0)
-        ];
+
+    public function getRecommendedSongs(int $userId, int $limit = 20): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT s.*, 
+                    (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                    COALESCE(s.rating, 0) as rating,
+                    MATCH(s.genre) AGAINST((
+                        SELECT GROUP_CONCAT(DISTINCT s2.genre ORDER BY COUNT(*) DESC SEPARATOR ' ')
+                        FROM listening_history lh
+                        JOIN songs s2 ON lh.song_id = s2.id
+                        WHERE lh.user_id = ? AND s2.genre IS NOT NULL AND s2.genre != ''
+                        GROUP BY s2.genre
+                        ORDER BY COUNT(*) DESC LIMIT 3
+                    ) IN BOOLEAN MODE) as relevance
+             FROM songs s
+             WHERE s.is_approved = 1
+               AND s.id NOT IN (
+                   SELECT song_id FROM listening_history WHERE user_id = ?
+               )
+             ORDER BY relevance DESC, s.rating DESC, s.plays DESC
+             LIMIT ?"
+        );
+        $stmt->execute([$userId, $userId, $limit]);
+        return $stmt->fetchAll();
     }
 }
-?>

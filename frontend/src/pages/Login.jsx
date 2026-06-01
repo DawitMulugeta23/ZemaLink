@@ -1,66 +1,55 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { authService } from "../services/authService";
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 
-function Login() {
+const DEMO_ACCOUNTS = [
+  { email: 'admin@zemalink.com', password: 'password', role: 'Admin', icon: '👑' },
+  { email: 'musician@zemalink.com', password: 'password', role: 'Musician', icon: '🎤' },
+  { email: 'audience@zemalink.com', password: 'password', role: 'Audience', icon: '🎧' },
+  { email: 'demo@zemalink.com', password: 'password', role: 'Demo', icon: '🎵' },
+];
+
+export default function Login() {
   const [searchParams] = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/";
-  
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const redirectUrl = searchParams.get('redirect') || '/';
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [adminExists, setAdminExists] = useState(true);
-  const { login } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const s = await authService.adminExists();
-      if (!cancelled && s?.success) {
-        setAdminExists(!!s.admin_exists);
-      }
+      const res = await authService.adminExists();
+      if (!cancelled && res?.success) setAdminExists(!!res.admin_exists);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  const demoAccounts = [
-    {
-      email: "admin@zemalink.com",
-      password: "password",
-      role: "Admin",
-      icon: "👑",
-    },
-    {
-      email: "musician@zemalink.com",
-      password: "password",
-      role: "Musician",
-      icon: "🎤",
-    },
-    {
-      email: "audience@zemalink.com",
-      password: "password",
-      role: "Audience",
-      icon: "🎧",
-    },
-    {
-      email: "demo@zemalink.com",
-      password: "password",
-      role: "Demo",
-      icon: "🎵",
-    },
-  ];
+  const validate = () => {
+    if (!email.trim()) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Please enter a valid email';
+    if (!password) return 'Password is required';
+    return '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setError('');
 
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setLoading(true);
     const result = await login(email, password);
     setLoading(false);
 
@@ -68,143 +57,150 @@ function Login() {
       navigate(redirectUrl);
     } else {
       if (result.requiresVerification) {
-        navigate(
-          `/verify-email?email=${encodeURIComponent(result.verificationEmail || email)}&redirect=${encodeURIComponent(redirectUrl)}`,
-        );
+        navigate(`/verify-email?email=${encodeURIComponent(result.verificationEmail || email)}&redirect=${encodeURIComponent(redirectUrl)}`);
         return;
       }
-      setError(result.message || "Login failed");
+      setError(result.message || 'Invalid email or password');
     }
   };
 
   const fillCredentials = (demoEmail, demoPassword) => {
     setEmail(demoEmail);
     setPassword(demoPassword);
+    setError('');
   };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8 px-4">
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center shadow-lg">
-            <span className="text-4xl">🎵</span>
+      <div className="w-full max-w-md">
+        <div className="glass-dark rounded-2xl border border-white/10 p-8 shadow-2xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
+              <span className="text-4xl">🎵</span>
+            </div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+              Welcome Back
+            </h2>
+            <p className="text-slate-400 text-sm mt-2">Sign in to continue to ZemaLink</p>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
-            Welcome Back
-          </h2>
-          <p className="text-white/60 text-sm mt-2">
-            Sign in to continue to ZemaLink
-          </p>
-        </div>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/50 text-red-200 text-sm text-center">
-            {error}
-          </div>
-        )}
+          {/* Error */}
+          {error && (
+            <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm text-center">
+              {error}
+            </div>
+          )}
 
-        {!adminExists && (
-          <div className="mb-4 p-4 rounded-xl border border-amber-400/40 bg-amber-500/15 text-center">
-            <p className="text-sm text-amber-100/95 mb-3">
-              No administrator account exists yet. Register the first admin to continue setup.
+          {/* Admin warning */}
+          {!adminExists && (
+            <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-center">
+              <p className="text-sm text-amber-200 mb-3">No admin account exists yet.</p>
+              <Link to="/register?role=admin" className="inline-flex px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm transition hover:scale-105">
+                Register as Admin
+              </Link>
+            </div>
+          )}
+
+          {/* Demo Accounts */}
+          <div className="mb-6">
+            <p className="text-xs text-slate-500 text-center mb-2">
+              Quick login (password: <span className="text-slate-300 font-mono">password</span>):
             </p>
-            <Link
-              to="/register?role=admin"
-              className="inline-flex justify-center items-center px-5 py-2.5 rounded-full font-semibold text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md hover:opacity-95 transition-opacity"
-            >
-              Register administrator
-            </Link>
-          </div>
-        )}
-
-        {/* Demo Accounts Quick Select */}
-        <div className="mb-6">
-          <p className="text-xs text-white/50 text-center mb-2">
-            Quick login (seed data — password is{" "}
-            <span className="text-white/70 font-mono">password</span>):
-          </p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {demoAccounts.map((account, idx) => (
-              <button
-                key={idx}
-                onClick={() => fillCredentials(account.email, account.password)}
-                className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs transition flex items-center gap-1"
-              >
-                <span>{account.icon}</span>
-                <span>{account.role}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-white/70 text-sm mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-white/70 text-sm mb-2">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition pr-12"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition"
-              >
-                {showPassword ? "🙈" : "👁️"}
-              </button>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {DEMO_ACCOUNTS.map((acc, i) => (
+                <button
+                  key={i}
+                  onClick={() => fillCredentials(acc.email, acc.password)}
+                  className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400 hover:bg-white/10 hover:text-white transition flex items-center gap-1"
+                >
+                  <span>{acc.icon}</span>
+                  <span>{acc.role}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg mt-6"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm text-slate-400 mb-2">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                required
+                autoComplete="email"
+              />
+            </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-white/50 text-sm">
-            Don't have an account?{" "}
-            <Link
-              to="/register"
-              className="text-red-400 hover:text-red-300 font-semibold transition"
+            <div>
+              <label className="block text-sm text-slate-400 mb-2">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition text-lg"
+                  tabIndex={-1}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end">
+              <button type="button" className="text-xs text-slate-500 hover:text-primary-400 transition">
+                Forgot password?
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Create Account
-            </Link>
-          </p>
-        </div>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+          </form>
 
-        {/* Show redirect info if coming from premium purchase */}
-        {redirectUrl !== "/" && redirectUrl.includes("pro-deal") && (
-          <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-            <p className="text-xs text-amber-300/80 text-center">
-              🔒 After login, you'll be redirected to complete your premium purchase.
+          {/* Register link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-500">
+              Don&apos;t have an account?{' '}
+              <Link to="/register" className="text-primary-400 hover:text-primary-300 font-semibold transition">
+                Create Account
+              </Link>
             </p>
           </div>
-        )}
+
+          {/* Redirect info */}
+          {redirectUrl !== '/' && redirectUrl.includes('pro-deal') && (
+            <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+              <p className="text-xs text-amber-300 text-center">
+                After login, you&apos;ll be redirected to complete your purchase.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-
-export default Login;

@@ -6,7 +6,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300 group"
+      className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-900 transition-all duration-300 group dark:bg-slate-800 dark:border-slate-200 dark:text-white dark:hover:bg-slate-100"
       aria-label="Toggle theme"
     >
       {/* Sun Icon - Light Mode */}

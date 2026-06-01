@@ -4,13 +4,10 @@ import CloudinaryUpload from "./CloudinaryUpload";
 
 function SongUpload({ onSuccess }) {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({
     title: "",
     artist: "",
     album: "",
     duration: 0,
-    is_premium: false,
-    price: 0,
   });
   const [audioData, setAudioData] = useState(null);
   const [mediaType, setMediaType] = useState("audio");
@@ -61,8 +58,6 @@ function SongUpload({ onSuccess }) {
           artist: "",
           album: "",
           duration: 0,
-          is_premium: false,
-          price: 0,
         });
         setAudioData(null);
         setMediaType("audio");
@@ -87,7 +82,7 @@ function SongUpload({ onSuccess }) {
   }
 
   return (
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
+    <div className="card-base p-6">
       <h2 className="text-2xl font-bold mb-4">Upload New Song</h2>
 
       {message && (
@@ -100,7 +95,7 @@ function SongUpload({ onSuccess }) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-white/70 mb-2">Song Title *</label>
+          <label className="block text-slate-700 dark:text-slate-300 mb-2">Song Title *</label>
           <input
             type="text"
             required
@@ -108,12 +103,12 @@ function SongUpload({ onSuccess }) {
             onChange={(e) =>
               setFormData({ ...formData, title: e.target.value })
             }
-            className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+            className="w-full px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
           />
         </div>
 
         <div>
-          <label className="block text-white/70 mb-2">Artist Name *</label>
+          <label className="block text-slate-700 mb-2">Artist Name *</label>
           <input
             type="text"
             required
@@ -121,24 +116,24 @@ function SongUpload({ onSuccess }) {
             onChange={(e) =>
               setFormData({ ...formData, artist: e.target.value })
             }
-            className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+            className="w-full px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-white"
           />
         </div>
 
         <div>
-          <label className="block text-white/70 mb-2">Album</label>
+          <label className="block text-slate-700 mb-2">Album</label>
           <input
             type="text"
             value={formData.album}
             onChange={(e) =>
               setFormData({ ...formData, album: e.target.value })
             }
-            className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+            className="w-full px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-white"
           />
         </div>
 
         <div>
-          <label className="block text-white/70 mb-2">Cover Image</label>
+          <label className="block text-slate-700 mb-2">Cover Image</label>
           <CloudinaryUpload
             type="image"
             onUploadSuccess={(data) => setCoverData(data)}
@@ -146,14 +141,14 @@ function SongUpload({ onSuccess }) {
         </div>
 
         <div>
-          <label className="block text-white/70 mb-2">Media Type *</label>
+          <label className="block text-slate-700 mb-2">Media Type *</label>
           <select
             value={mediaType}
             onChange={(e) => {
               setMediaType(e.target.value);
               setAudioData(null);
             }}
-            className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+            className="w-full px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-white"
           >
             <option value="audio">Audio</option>
             <option value="video">Video</option>
@@ -161,7 +156,7 @@ function SongUpload({ onSuccess }) {
         </div>
 
         <div>
-          <label className="block text-white/70 mb-2">
+          <label className="block text-slate-700 mb-2">
             {mediaType === "video" ? "Video File *" : "Audio File (MP3) *"}
           </label>
           <CloudinaryUpload
@@ -170,33 +165,7 @@ function SongUpload({ onSuccess }) {
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={formData.is_premium}
-              onChange={(e) =>
-                setFormData({ ...formData, is_premium: e.target.checked })
-              }
-              className="w-4 h-4"
-            />
-            <span className="text-white/70">Premium Song</span>
-          </label>
 
-          {formData.is_premium && (
-            <div>
-              <input
-                type="number"
-                placeholder="Price ($)"
-                value={formData.price}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
-                }
-                className="w-32 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
-              />
-            </div>
-          )}
-        </div>
 
         <button
           type="submit"

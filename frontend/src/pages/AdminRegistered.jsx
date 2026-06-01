@@ -53,7 +53,7 @@ function AdminRegistered() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 grid gap-3 md:grid-cols-4">
+      <div className="card-soft p-4 grid gap-3 md:grid-cols-4">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -90,10 +90,10 @@ function AdminRegistered() {
         </select>
       </div>
 
-      <div className="rounded-2xl border border-white/10 overflow-x-auto">
+      <div className="rounded-2xl border border-slate-200/80 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-white/5 border-b border-white/10 text-white/60 text-left">
+            <tr className="bg-slate-100/90 border-b border-slate-200/80 text-slate-600 text-left">
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>
               <th className="p-3">Role</th>
@@ -119,9 +119,9 @@ function AdminRegistered() {
               filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-white/5">
                   <td className="p-3 text-white">{user.name}</td>
-                  <td className="p-3 text-white/70">{user.email}</td>
+                  <td className="p-3 text-slate-700">{user.email}</td>
                   <td className="p-3">
-                    <span className="rounded-full px-2 py-1 text-xs bg-white/10 text-white">
+                    <span className="rounded-full px-2 py-1 text-xs bg-slate-100 text-white">
                       {user.role}
                     </span>
                   </td>
@@ -136,7 +136,7 @@ function AdminRegistered() {
                       {Number(user.is_approved) === 1 ? "Approved" : "Pending"}
                     </span>
                   </td>
-                  <td className="p-3 text-white/70">
+                  <td className="p-3 text-slate-700">
                     {user.subscription_status || user.subscription || "free"}
                   </td>
                   <td className="p-3 text-white/50">

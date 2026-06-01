@@ -1,195 +1,318 @@
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { usePlayer } from "../../context/PlayerContext";
-import { DEFAULT_COVER } from "../../constants";
-import PremiumBadge from "./PremiumBadge";
+import { getMediaUrl } from "../../utils/mediaUrl";
+import { formatTime } from "../../utils/helpers";
 import { songService } from "../../services/songService";
 import RatingStars from "./RatingStars";
+import SongContextMenu from "./SongContextMenu";
+import PremiumBadge from "./PremiumBadge";
 
-function SongCard({ song }) {
+function PlayIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function PauseIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+    </svg>
+  );
+}
+
+function HeartIcon({ filled, className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 2}>
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+    </svg>
+  );
+}
+
+function MoreIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="19" r="2" />
+    </svg>
+  );
+}
+
+function ClockIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
+export default function SongCard({ song, onPlay, showActions = true }) {
   const navigate = useNavigate();
-  const { playSong, currentSong, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
+  const { currentSong, isPlaying, playSong, togglePlay, likedSongs, toggleLike } = usePlayer();
+  const [contextMenu, setContextMenu] = useState(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const touchTimer = useRef(null);
+  const cardRef = useRef(null);
 
-  const coverImage =
-    song?.cover_image && song.cover_image !== "null" && song.cover_image !== ""
-      ? song.cover_image
-      : DEFAULT_COVER;
+  const isCurrentlyPlaying = currentSong?.id === song?.id && isPlaying;
+  const isLiked = song && likedSongs?.some((s) => s.id === song.id);
+  const coverUrl = song ? getMediaUrl(song.cover_image) : "/assets/images/default-cover.svg";
 
-  // Check if song is premium and user hasn't purchased it
-  const isPremium = song?.is_premium === 1;
-  // Check if user has access (premium subscription or purchased)
-  const hasAccess = song?.can_play === true || 
-                    (user?.subscription_status === 'premium') ||
-                    song?.purchased === true;
-  
-  // Song is locked if premium AND user doesn't have access
-  const locked = isPremium && !hasAccess;
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "100px" },
+    );
+    if (cardRef.current) observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, []);
 
-  const handleCardClick = async () => {
+  const handlePlay = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (!user) {
+        toast.info("Please log in to play music.");
+        navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+      if (onPlay) {
+        onPlay(song);
+      } else {
+        playSong({ ...song, can_play: true });
+      }
+    },
+    [user, song, onPlay, playSong, navigate],
+  );
+
+  const handleCardClick = useCallback(() => {
     if (!user) {
       toast.info("Please log in to play music.");
       navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
-
-    // If premium and locked, redirect to payment
-    if (locked) {
-      navigate(`/pro-deal?songId=${song.id}`);
-      return;
-    }
-    
-    // Check if it's the same song that's already playing
-    if (currentSong?.id === song.id && isPlaying) {
+    if (isCurrentlyPlaying) {
       togglePlay();
-      return;
+    } else if (onPlay) {
+      onPlay(song);
+    } else {
+      playSong({ ...song, can_play: true });
     }
-    
-    // Free song or already purchased - play it
-    playSong({ ...song, can_play: true });
-    navigate("/player");
-  };
+  }, [user, isCurrentlyPlaying, togglePlay, onPlay, song, playSong, navigate]);
 
-  const handleReport = (e) => {
+  const handleLike = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (!user) {
+        toast.info("Please log in to like songs.");
+        return;
+      }
+      toggleLike(song.id);
+    },
+    [user, song, toggleLike],
+  );
+
+  const handleReport = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (!user) {
+        toast.info("Log in to report content.");
+        return;
+      }
+      const reason = window.prompt("Describe the issue:");
+      if (reason?.trim()) {
+        songService.reportSong(song.id, reason.trim());
+        toast.success("Report submitted. Thank you.");
+      }
+    },
+    [user, song],
+  );
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (!user) {
-      toast.info("Log in to report content.");
-      return;
-    }
-    const reason = window.prompt("Describe the issue:");
-    if (reason?.trim()) {
-      songService.reportSong(song.id, reason.trim());
-      toast.success("Report submitted. Thank you.");
-    }
-  };
+    if (!user) return;
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, [user]);
 
-  // Check if this specific song is currently playing
-  const isCurrentlyPlaying = currentSong?.id === song.id && isPlaying;
+  const handleTouchStart = useCallback((e) => {
+    if (!user) return;
+    const touch = e.touches[0];
+    touchTimer.current = setTimeout(() => {
+      setContextMenu({ x: touch.clientX, y: touch.clientY });
+    }, 600);
+  }, [user]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchTimer.current) clearTimeout(touchTimer.current);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (touchTimer.current) clearTimeout(touchTimer.current);
+    };
+  }, []);
+
+  if (!song) return null;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && handleCardClick()}
-      className={`group relative flex flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-3 shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-red-400/35 hover:shadow-xl hover:shadow-red-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400/60 ${
-        locked ? "cursor-pointer" : "cursor-pointer"
-      }`}
-      onClick={handleCardClick}
-    >
-      <div className="relative mb-3 overflow-hidden rounded-xl ring-1 ring-white/10">
-        <img
-          src={coverImage}
-          alt={song?.title || "Song cover"}
-          className={`aspect-square w-full object-cover transition duration-300 ease-out group-hover:scale-[1.04] ${locked ? "opacity-55" : ""}`}
-          onError={(e) => {
-            e.target.src = DEFAULT_COVER;
-          }}
-        />
-        {isPremium ? (
-          <div className="absolute left-2 top-2 z-10">
-            <PremiumBadge price={song?.price} />
-          </div>
-        ) : null}
-        
-        {/* Lock overlay for premium songs without access */}
-        {locked ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/60 backdrop-blur-[2px]">
-            <span className="text-3xl drop-shadow-lg" title="Purchase required" aria-hidden>
-              🔒
-            </span>
-            <span className="text-[10px] text-white/80 font-medium">Premium</span>
-          </div>
-        ) : (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/70 via-black/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            {isCurrentlyPlaying ? (
-              <span
-                className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl text-white shadow-lg backdrop-blur-sm"
-                aria-hidden
-              >
-                ⏸
-              </span>
-            ) : (
-              <span
-                className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl text-white shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-105"
-                aria-hidden
-              >
-                ▶
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <h3 className="mb-0.5 flex min-h-[1.25rem] items-center gap-1 text-sm font-semibold leading-tight text-white">
-        <span className="truncate" title={song?.title}>
-          {song?.title}
-        </span>
-        {isPremium && !locked && (
-          <span className="shrink-0 text-base" title="Premium track (purchased)">
-            💎
-          </span>
-        )}
-        {isPremium && locked && (
-          <span className="shrink-0 text-base" title="Premium track (locked)">
-            🔒
-          </span>
-        )}
-      </h3>
-      <p
-        className="mb-2 truncate text-xs text-white/55"
-        title={song?.artist}
+    <>
+      <div
+        ref={cardRef}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && handleCardClick()}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className={`group relative flex flex-col rounded-2xl border border-surface-200 dark:border-surface-700/50 bg-white/70 dark:bg-surface-800/50 backdrop-blur-lg p-3 sm:p-4 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary-400/30 dark:hover:border-primary-500/30 hover:shadow-primary-500/10 dark:hover:shadow-primary-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer ${
+          isVisible ? "animate-fade-in" : "opacity-0"
+        }`}
+        onClick={handleCardClick}
       >
-        {song?.artist}
-      </p>
-      <p className="mb-2 text-[11px] uppercase tracking-wide text-white/45">
-        {song?.media_type === "video" ? "Video" : "Audio"}
-      </p>
+        {/* Cover Image */}
+        <div className="relative mb-3 overflow-hidden rounded-xl aspect-square bg-surface-100 dark:bg-surface-700">
+          {!imgLoaded && !imgError && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+            </div>
+          )}
+          {isVisible && (
+            <img
+              src={coverUrl}
+              alt={song.title || "Song cover"}
+              loading="lazy"
+              className={`w-full h-full object-cover transition-all duration-500 ${
+                imgLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
+              } group-hover:scale-105`}
+              onLoad={() => setImgLoaded(true)}
+              onError={(e) => {
+                setImgError(true);
+                setImgLoaded(true);
+                e.target.src = "/assets/images/default-cover.svg";
+              }}
+            />
+          )}
 
-      <div className="mt-auto flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-[11px] font-medium tabular-nums text-white/50 ring-1 ring-white/5">
-        <span className="inline-flex items-center gap-1">
-          <span className="text-red-300/90" aria-hidden>❤️</span>
-          <span>{song?.likes_count ?? 0}</span>
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="text-emerald-300/80" aria-hidden>👁️</span>
-          <span>{song?.plays?.toLocaleString() ?? 0}</span>
-        </span>
+          {/* Duration badge */}
+          {song.duration > 0 && (
+            <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-medium text-white tabular-nums flex items-center gap-1">
+              <ClockIcon className="w-2.5 h-2.5" />
+              {formatTime(song.duration)}
+            </div>
+          )}
+
+          {/* Premium badge */}
+          {song.is_premium && (
+            <div className="absolute top-1.5 left-1.5">
+              <PremiumBadge size="sm" />
+            </div>
+          )}
+
+          {/* Playing indicator */}
+          {isCurrentlyPlaying && (
+            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary-500 shadow-lg shadow-primary-500/50 flex items-center justify-center">
+              <div className="flex items-center gap-px">
+                <span className="w-0.5 h-2.5 bg-white rounded-full animate-pulse-waveform" style={{ animationDelay: "0s" }} />
+                <span className="w-0.5 h-3 bg-white rounded-full animate-pulse-waveform" style={{ animationDelay: "0.15s" }} />
+                <span className="w-0.5 h-2 bg-white rounded-full animate-pulse-waveform" style={{ animationDelay: "0.3s" }} />
+              </div>
+            </div>
+          )}
+
+          {/* Hover overlay with play button */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl">
+            <button
+              onClick={handlePlay}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-xl shadow-primary-500/40 flex items-center justify-center transition-transform duration-200 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label={isCurrentlyPlaying ? "Pause" : "Play"}
+            >
+              {isCurrentlyPlaying ? (
+                <PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : (
+                <PlayIcon className="w-5 h-5 sm:w-6 sm:h-6 ml-0.5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Song Info */}
+        <h3 className="font-semibold text-sm text-surface-800 dark:text-white truncate mb-0.5" title={song.title}>
+          {song.title}
+        </h3>
+        <p className="text-xs text-surface-500 dark:text-surface-400 truncate mb-2" title={song.artist}>
+          {song.artist}
+        </p>
+
+        {/* Rating */}
+        <div className="mt-auto mb-2">
+          <RatingStars rating={song.rating || 0} size="sm" />
+        </div>
+
+        {/* Actions bar */}
+        {showActions && (
+          <div className="flex items-center justify-between pt-2 border-t border-surface-100 dark:border-surface-700/50">
+            {/* Stats */}
+            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-surface-400 tabular-nums">
+              {(song.plays > 0 || song.plays_count > 0) && (
+                <span>{song.plays || song.plays_count || 0} plays</span>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-0.5">
+              {user && (
+                <button
+                  onClick={handleLike}
+                  className={`p-1.5 rounded-full transition-colors ${
+                    isLiked
+                      ? "text-accent-500 hover:text-accent-600"
+                      : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+                  }`}
+                  aria-label={isLiked ? "Unlike" : "Like"}
+                >
+                  <HeartIcon filled={isLiked} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              )}
+              {user && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleContextMenu(e);
+                  }}
+                  className="p-1.5 rounded-full text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-colors"
+                  aria-label="More options"
+                >
+                  <MoreIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="mt-2">
-        <RatingStars 
-          songId={song.id} 
-          rating={song?.rating || 0}
-          likesCount={song?.likes_count || 0}
-          playsCount={song?.plays || 0}
+      {contextMenu && (
+        <SongContextMenu
+          song={song}
+          position={contextMenu}
+          isOpen={!!contextMenu}
+          onClose={() => setContextMenu(null)}
         />
-      </div>
-
-      {user && !locked && (
-        <button
-          type="button"
-          onClick={handleReport}
-          className="mt-2 w-full rounded-lg border border-transparent py-1 text-center text-[10px] font-medium uppercase tracking-wide text-white/35 transition hover:border-red-400/25 hover:bg-red-500/10 hover:text-red-200/90"
-        >
-          Report
-        </button>
       )}
-      
-      {locked && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/pro-deal?songId=${song.id}`);
-          }}
-          className="mt-2 w-full rounded-lg bg-gradient-to-r from-amber-500/80 to-orange-500/80 py-1.5 text-center text-[10px] font-bold uppercase tracking-wide text-white transition hover:scale-105"
-        >
-          💎 Unlock for ${Number(song?.price || 0.99).toFixed(2)}
-        </button>
-      )}
-    </div>
+    </>
   );
 }
-
-export default SongCard;

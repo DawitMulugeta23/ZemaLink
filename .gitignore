@@ -1,1 +1,27 @@
+# Environment
 .env
+.env.local
+.env.development.local
+
+# Dependencies
+backend/vendor/
+frontend/node_modules/
+
+# Build
+frontend/dist/
+backend/uploads/*.mp3
+backend/uploads/*.mp4
+backend/uploads/*.wav
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

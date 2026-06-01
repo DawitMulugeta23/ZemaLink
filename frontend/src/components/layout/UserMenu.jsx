@@ -34,8 +34,7 @@ function UserMenu() {
     { label: "Registered Users", icon: "🧾", path: "/admin-registered", show: user.role === "admin" },
     { label: "Musician Studio", icon: "🎤", path: "/musician-dashboard", show: user.role === "musician" },
     { label: "My Library", icon: "📚", path: "/library", show: true },
-    { label: "Purchased", icon: "💎", path: "/purchased", show: true },
-    { label: "Subscription", icon: "⭐", path: "/subscription", show: true },
+
     { label: "Settings", icon: "⚙️", path: "/settings", show: true },
   ];
 
@@ -46,20 +45,20 @@ function UserMenu() {
       {/* Profile Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300"
+        className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-all duration-300"
         aria-label="User menu"
       >
-        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-purple-500/20">
           {user.name?.charAt(0).toUpperCase() || "U"}
         </div>
         <div className="hidden md:block text-left">
           <p className="text-sm font-medium text-white">
             {user.name?.split(" ")[0] || user.name}
           </p>
-          <p className="text-xs text-white/50 capitalize">{user.role}</p>
+          <p className="text-xs text-slate-400 capitalize">{user.role}</p>
         </div>
         <svg
-          className={`w-4 h-4 text-white/70 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -75,17 +74,17 @@ function UserMenu() {
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-full mt-2 w-72 bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden z-50">
+          <div className="absolute right-0 top-full mt-2 w-72 bg-[#111119] rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/50 overflow-hidden z-50">
             {/* User Info Header */}
-            <div className="px-4 py-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+            <div className="px-4 py-4 border-b border-white/[0.06] bg-gradient-to-r from-purple-500/5 to-transparent">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold shadow-lg">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-purple-500/20">
                   {user.name?.charAt(0).toUpperCase() || "U"}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">{user.name}</p>
-                  <p className="text-xs text-white/50 truncate">{user.email}</p>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gradient-to-r from-red-500/20 to-pink-500/20 text-white/80 capitalize">
+                  <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 capitalize border border-purple-500/20">
                     {user.role}
                   </span>
                 </div>
@@ -99,7 +98,7 @@ function UserMenu() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors duration-200 group"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors duration-200 group"
                 >
                   <span className="text-xl w-7 group-hover:scale-110 transition-transform">{item.icon}</span>
                   <span>{item.label}</span>
@@ -108,7 +107,7 @@ function UserMenu() {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-white/10 mx-2"></div>
+            <div className="border-t border-white/[0.06] mx-2"></div>
 
             {/* Logout Button */}
             <button

@@ -1,350 +1,291 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import SongCard from "../components/music/SongCard";
-import { useAuth } from "../context/AuthContext";
-import { authService } from "../services/authService";
-import { songService } from "../services/songService";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { usePlayer } from '../context/PlayerContext';
+import { useTheme } from '../context/ThemeContext';
+import SongCard from '../components/music/SongCard';
+import { songService } from '../services/songService';
+import { formatNumber } from '../utils/helpers';
 
-const FEATURES = [
-  {
-    title: "Curated discovery",
-    description:
-      "Browse trending tracks and new releases in one place—built for listeners who care about sound and context.",
-  },
-  {
-    title: "Artist-ready roles",
-    description:
-      "Musicians, audiences, and admins each get workflows that fit how music is shared, heard, and managed.",
-  },
-  {
-    title: "Reliable playback",
-    description:
-      "A focused player experience so you can stay in the music without fighting the interface.",
-  },
-];
+function useInView(threshold = 0.1) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setInView(true); obs.disconnect(); }
+    }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, inView];
+}
 
-const CONTACT_CHANNELS = [
-  {
-    label: "General inquiries",
-    value: "hello@zemalink.com",
-    href: "mailto:hello@zemalink.com",
-    detail: "Partnerships, press, and product questions",
-  },
-  {
-    label: "Support",
-    value: "support@zemalink.com",
-    href: "mailto:support@zemalink.com",
-    detail: "Account access, playback, and billing help",
-  },
-];
+function AnimatedSection({ children, className = '' }) {
+  const [ref, inView] = useInView();
+  return (
+    <section
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
 
-function Home() {
-  const { user } = useAuth();
-  const [songs, setSongs] = useState([]);
-  const [trending, setTrending] = useState([]);
+function SectionSkeleton() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="animate-pulse rounded-3xl bg-white/5 border border-white/[0.08] p-4">
+          <div className="aspect-square rounded-2xl bg-white/10 mb-4" />
+          <div className="h-3 bg-white/10 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-white/10 rounded w-1/2 mb-3" />
+          <div className="h-4 bg-white/10 rounded w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <div className="flex gap-4 overflow-hidden">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="animate-pulse shrink-0 w-44 rounded-3xl bg-white/5 border border-white/[0.08] p-4">
+          <div className="aspect-square rounded-2xl bg-white/10 mb-4" />
+          <div className="h-3 bg-white/10 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-white/10 rounded w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectionHeader({ title, action }) {
+  return (
+    <div className="flex items-center justify-between mb-6">
+      <h2 className="text-2xl font-bold text-white">{title}</h2>
+      {action && (
+        <Link to={action.to} className="text-sm text-primary-400 hover:text-primary-300 font-medium transition">
+          {action.label} &rarr;
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function HorizontalCarousel({ songs, loading }) {
+  if (loading) return <SkeletonRow />;
+  if (!songs?.length) return null;
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 snap-x snap-mandatory">
+      {songs.map((song) => (
+        <div key={song.id} className="shrink-0 w-44 snap-start">
+          <SongCard song={song} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SongGrid({ songs, loading, emptyMessage }) {
+  if (loading) return <SectionSkeleton />;
+  if (!songs?.length) {
+    return (
+      <div className="glass-dark rounded-2xl p-12 text-center">
+        <p className="text-slate-400">{emptyMessage || 'No songs available yet.'}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      {songs.map((song) => (
+        <SongCard key={song.id} song={song} />
+      ))}
+    </div>
+  );
+}
+
+export default function Home() {
+  const { user, isPremium } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [showCredentials, setShowCredentials] = useState(true);
-  const [adminExists, setAdminExists] = useState(true);
-
-  const demoUsers = [
-    {
-      role: "Admin",
-      email: "admin@zemalink.com",
-      password: "password",
-      icon: "👑",
-      color: "red",
-    },
-    {
-      role: "Musician",
-      email: "musician@zemalink.com",
-      password: "password",
-      icon: "🎤",
-      color: "purple",
-    },
-    {
-      role: "Audience",
-      email: "audience@zemalink.com",
-      password: "password",
-      icon: "🎧",
-      color: "green",
-    },
-    {
-      role: "Demo",
-      email: "demo@zemalink.com",
-      password: "password",
-      icon: "🎵",
-      color: "blue",
-    },
-  ];
-
-  const loadData = useCallback(async () => {
-    try {
-      const [allSongs, trendingSongs] = await Promise.all([
-        songService.getSongs(),
-        songService.getTrending(),
-      ]);
-      setSongs(allSongs || []);
-      setTrending(trendingSongs || []);
-      const adminState = await authService.adminExists();
-      if (adminState?.success) {
-        setAdminExists(Boolean(adminState.admin_exists));
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [featured, setFeatured] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [topRated, setTopRated] = useState([]);
+  const [newReleases, setNewReleases] = useState([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [f, t, r, n] = await Promise.all([
+          songService.getFeatured().catch(() => []),
 
-  if (loading) {
+          songService.getTrending().catch(() => []),
+
+          songService.getTopRated().catch(() => []),
+
+          songService.getNewReleases().catch(() => []),
+        ]);
+        if (cancelled) return;
+        setFeatured(f || []);
+        setTrending(t || []);
+        setTopRated(r || []);
+        setNewReleases(n || []);
+      } catch (err) {
+        if (!cancelled) setError('Failed to load content. Please try again later.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (error) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-white/20 border-t-red-500 rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
+        <div className="text-5xl">⚠️</div>
+        <p className="text-slate-400 text-center max-w-md">{error}</p>
+        <button onClick={() => window.location.reload()} className="btn-primary px-6 py-2 rounded-full bg-primary-500 hover:bg-primary-600 text-white font-medium transition">
+          Try Again
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Demo Credentials Banner */}
-      {showCredentials && !user && (
-        <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-md border border-yellow-500/30 rounded-2xl p-4 mb-6 relative">
-          <button
-            onClick={() => setShowCredentials(false)}
-            className="absolute top-2 right-2 text-white/50 hover:text-white"
-          >
-            ✕
-          </button>
-          <h3 className="text-lg font-semibold mb-3 text-center">
-            🔐 Demo Login Credentials
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {demoUsers.map((demo, index) => (
-              <div
-                key={index}
-                className={`bg-${demo.color}-500/10 rounded-xl p-3 border border-${demo.color}-500/30`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">{demo.icon}</span>
-                  <span className="font-bold text-white">{demo.role}</span>
-                </div>
-                <div className="text-xs text-white/70">
-                  <div>📧 {demo.email}</div>
-                  <div>🔑 {demo.password}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs text-white/50 mt-3">
-            Seed accounts use password <span className="font-mono text-white/70">password</span>{" "}
-            (matches default bcrypt in sample SQL).
-          </p>
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-16 p-8 md:p-16 text-center md:text-left">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/30 via-primary-400/20 to-accent-500/10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-gradient-to-tr from-accent-500/20 to-primary-400/10 blur-3xl" />
         </div>
-      )}
-
-      {/* Landing hero */}
-      <header className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 md:p-12 mb-10 text-center md:text-left overflow-hidden relative">
-        <div
-          className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 rounded-full bg-gradient-to-br from-red-500/20 via-yellow-500/10 to-pink-500/20 blur-2xl"
-          aria-hidden
-        />
-        <div className="relative max-w-3xl mx-auto md:mx-0">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/50 mb-3">
-            Music streaming · Discovery · Community
+        <div className="relative">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-4 font-semibold">
+            Welcome to the future of music
           </p>
-          <h1 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-red-400 via-yellow-400 to-pink-400 bg-clip-text text-transparent leading-tight">
-            {user
-              ? `Welcome back, ${user.name}`
-              : "ZemaLink — where music meets clarity"}
+          <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-primary-400 via-primary-500 to-accent-500 bg-clip-text text-transparent leading-tight">
+            {user ? `Welcome back, ${user.name}` : 'Welcome to ZemaLink'}
           </h1>
-          <p className="text-white/75 text-base md:text-lg leading-relaxed mb-8">
+          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed">
             {user
-              ? "Pick up where you left off—trending picks and your library are ready when you are."
-              : "A modern listening experience for fans and creators: discover what is moving, organize what you love, and keep playback front and center."}
+              ? 'Your music, your way. Pick up where you left off and dive into your personalized feed.'
+              : 'Discover, stream, and share music from independent artists worldwide. High-fidelity audio, zero compromises.'}
           </p>
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center md:justify-start gap-3">
-            <Link
-              to="/browse"
-              className="inline-flex justify-center items-center px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg hover:opacity-95 transition-opacity"
-            >
-              Explore catalog
-            </Link>
+          <div className="flex flex-col sm:flex-row items-center md:justify-start gap-4 justify-center">
             {user ? (
-              <Link
-                to="/library"
-                className="inline-flex justify-center items-center px-6 py-3 rounded-full font-semibold text-sm border border-white/25 text-white/90 hover:bg-white/10 transition-colors"
-              >
-                Open your library
-              </Link>
+              <>
+                <button onClick={() => navigate('/browse')} className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary-500/25">
+                  Browse Music
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </button>
+                <button onClick={() => navigate('/library')} className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold text-lg hover:bg-white/5 transition">
+                  Your Library
+                </button>
+              </>
             ) : (
               <>
-                {!adminExists && (
-                  <Link
-                    to="/register?role=admin"
-                    className="inline-flex justify-center items-center px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg hover:opacity-95 transition-opacity"
-                  >
-                    Register first admin
-                  </Link>
-                )}
-                <Link
-                  to="/register"
-                  className="inline-flex justify-center items-center px-6 py-3 rounded-full font-semibold text-sm border border-white/25 text-white/90 hover:bg-white/10 transition-colors"
-                >
-                  Create an account
-                </Link>
-                <Link
-                  to="/login"
-                  className="inline-flex justify-center items-center px-6 py-3 rounded-full font-semibold text-sm text-white/70 hover:text-white transition-colors"
-                >
-                  Sign in
-                </Link>
+                <button onClick={() => navigate('/register')} className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary-500/25">
+                  Get Started Free
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </button>
+                <button onClick={() => navigate('/browse')} className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold text-lg hover:bg-white/5 transition">
+                  Browse Music
+                </button>
               </>
             )}
           </div>
-          {user && (
-            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10">
-              <span className="text-xl">
-                {user.role === "admin"
-                  ? "👑"
-                  : user.role === "musician"
-                    ? "🎤"
-                    : "🎧"}
-              </span>
-              <span className="text-sm text-white/80">
-                Signed in as{" "}
-                <span className="font-semibold text-white capitalize">
-                  {user.role}
-                </span>
-              </span>
-            </div>
-          )}
         </div>
-      </header>
+      </AnimatedSection>
 
-      {/* Value proposition */}
-      <section
-        className="mb-12"
-        aria-labelledby="why-zemalink-heading"
-      >
-        <h2
-          id="why-zemalink-heading"
-          className="text-lg font-semibold text-white/90 mb-2"
-        >
-          Why teams and listeners choose ZemaLink
-        </h2>
-        <p className="text-sm text-white/55 mb-6 max-w-2xl">
-          We combine a polished interface with practical roles for admins,
-          musicians, and audiences—so the product feels as intentional as the
-          music.
-        </p>
-        <div className="grid gap-4 md:grid-cols-3">
-          {FEATURES.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-2xl border border-white/10 bg-black/20 backdrop-blur-md p-6 text-left"
-            >
-              <h3 className="text-base font-semibold text-white mb-2">
-                {item.title}
-              </h3>
-              <p className="text-sm text-white/60 leading-relaxed">
-                {item.description}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* Trending Section */}
-      {trending.length > 0 && (
-        <section className="mb-12">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">🔥</span>
-            <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-red-400 to-yellow-400 bg-clip-text text-transparent">
-              Trending Now
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-            {trending.map((song) => (
-              <SongCard
-                key={song.id}
-                song={song}
-                onAccessGranted={loadData}
-              />
+      {/* Stats Section */}
+      {!user && (
+        <AnimatedSection className="mb-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Songs Streamed', value: '5M+' },
+              { label: 'Active Artists', value: '2K+' },
+              { label: 'Monthly Users', value: '10K+' },
+              { label: 'Uptime', value: '99.9%' },
+            ].map((stat, i) => (
+              <div key={i} className="glass-dark rounded-2xl p-6 text-center hover:border-primary-500/30 transition border border-white/10">
+                <div className="text-3xl font-bold gradient-text mb-1">{stat.value}</div>
+                <div className="text-sm text-slate-400 font-medium">{stat.label}</div>
+              </div>
             ))}
           </div>
-        </section>
+        </AnimatedSection>
       )}
 
-      {/* Latest Releases */}
-      {songs.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">🎵</span>
-            <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-              Latest Releases
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-            {songs.slice(0, 10).map((song) => (
-              <SongCard
-                key={song.id}
-                song={song}
-                onAccessGranted={loadData}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Featured Songs Carousel */}
+      <AnimatedSection className="mb-16">
+        <SectionHeader title="Featured" action={{ to: '/browse', label: 'View All' }} />
+        <HorizontalCarousel songs={featured} loading={loading} />
+      </AnimatedSection>
 
-      {/* Contact */}
-      <section
-        id="contact"
-        className="mt-14 mb-4 scroll-mt-24"
-        aria-labelledby="contact-heading"
-      >
-        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-black/30 backdrop-blur-md p-8 md:p-10">
-          <div className="grid gap-8 md:grid-cols-2 md:gap-12 items-start">
-            <div>
-              <h2
-                id="contact-heading"
-                className="text-xl md:text-2xl font-bold text-white mb-3"
-              >
-                Contact ZemaLink
-              </h2>
-              <p className="text-sm text-white/65 leading-relaxed mb-4">
-                We read every message. For the fastest resolution, use Support
-                for technical issues and General inquiries for everything else.
+      {/* Trending Songs */}
+      <AnimatedSection className="mb-16">
+        <SectionHeader title="Trending Now" action={{ to: '/browse?sort=trending', label: 'View All' }} />
+        <SongGrid songs={trending} loading={loading} emptyMessage="No trending songs right now." />
+      </AnimatedSection>
+
+      {/* Top Rated Songs */}
+      <AnimatedSection className="mb-16">
+        <SectionHeader title="Top Rated" action={{ to: '/browse?sort=top-rated', label: 'View All' }} />
+        <SongGrid songs={topRated} loading={loading} emptyMessage="No top rated songs yet." />
+      </AnimatedSection>
+
+      {/* New Releases */}
+      <AnimatedSection className="mb-16">
+        <SectionHeader title="New Releases" action={{ to: '/browse?sort=new', label: 'View All' }} />
+        <SongGrid songs={newReleases} loading={loading} emptyMessage="No new releases yet." />
+      </AnimatedSection>
+
+      {/* Premium Promotion Banner (free tier users) */}
+      {user && !isPremium && (
+        <AnimatedSection>
+          <div className="relative overflow-hidden rounded-[2rem] mb-16">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary-600/20 via-accent-600/20 to-amber-600/20 blur-2xl" />
+            <div className="relative glass-dark rounded-[2rem] border border-primary-500/20 p-8 md:p-12 text-center">
+              <div className="text-5xl mb-4">💎</div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Go Premium</h2>
+              <p className="text-slate-400 max-w-xl mx-auto mb-8">
+                Unlock high-quality audio, offline listening, and exclusive content. Support the artists you love.
               </p>
-              <p className="text-xs text-white/45">
-                Typical response time: 1–2 business days. Include your account
-                email and a short summary of the issue when writing to Support.
-              </p>
+              <button onClick={() => navigate('/subscription')} className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-amber-500/25">
+                Upgrade Now &rarr;
+              </button>
             </div>
-            <ul className="space-y-4">
-              {CONTACT_CHANNELS.map((row) => (
-                <li key={row.label}>
-                  <p className="text-xs uppercase tracking-wider text-white/45 mb-1">
-                    {row.label}
-                  </p>
-                  <a
-                    href={row.href}
-                    className="text-base font-medium text-white hover:text-pink-300 transition-colors break-all"
-                  >
-                    {row.value}
-                  </a>
-                  <p className="text-xs text-white/50 mt-1">{row.detail}</p>
-                </li>
-              ))}
-            </ul>
           </div>
-        </div>
-      </section>
+        </AnimatedSection>
+      )}
+
+      {/* CTA for Musicians */}
+      {!user && (
+        <AnimatedSection className="mb-16">
+          <div className="glass-dark rounded-[2rem] border border-white/10 p-8 md:p-12 text-center">
+            <div className="text-5xl mb-4">🎤</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Share Your Music</h2>
+            <p className="text-slate-400 max-w-xl mx-auto mb-8">
+              Are you a musician? Upload your tracks, connect with listeners, and grow your audience on ZemaLink.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button onClick={() => navigate('/register?role=musician')} className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold transition-all duration-300 hover:scale-105">
+                Join as Musician &rarr;
+              </button>
+              <button onClick={() => navigate('/browse')} className="px-8 py-4 rounded-full border border-white/20 text-white font-bold hover:bg-white/5 transition">
+                Explore Music
+              </button>
+            </div>
+          </div>
+        </AnimatedSection>
+      )}
     </div>
   );
 }
-
-export default Home;

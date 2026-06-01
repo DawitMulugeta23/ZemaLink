@@ -1,169 +1,114 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { usePlayer } from "../context/PlayerContext";
-import { useAuth } from "../context/AuthContext";
-import { DEFAULT_COVER } from "../constants";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { usePlayer } from '../context/PlayerContext';
+import { useAuth } from '../context/AuthContext';
+import { DEFAULT_COVER } from '../constants';
 
-function Player() {
+function formatTime(t) {
+  if (!t || isNaN(t)) return '0:00';
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function WaveformBars({ isPlaying }) {
+  return (
+    <div className={`flex items-end gap-[3px] h-8 ${isPlaying ? '' : 'opacity-40'}`}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="waveform-bar w-[3px] bg-primary-500 rounded-full"
+          style={{
+            height: `${Math.random() * 60 + 20}%`,
+            animationPlayState: isPlaying ? 'running' : 'paused',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function Player() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading, isPremium } = useAuth();
   const {
-    currentSong,
-    isPlaying,
-    togglePlay,
-    nextSong,
-    prevSong,
-    likedSongs,
-    toggleLike,
-    currentTime,
-    duration,
-    seekTo,
-    mediaRef,
-    playSong,
-    queue,
-    relatedSongs,
-    addToQueue,
-    removeFromQueue,
-    clearQueue,
+    currentSong, isPlaying, togglePlay, nextSong, prevSong,
+    likedSongs, toggleLike, currentTime, duration, seekTo,
+    mediaRef, queue, relatedSongs, addToQueue, removeFromQueue, clearQueue,
+    volume, setVolume, muted, toggleMute, toggleLoop, loop, playSong,
   } = usePlayer();
 
-  const [volume, setVolume] = useState(70);
-  const [isMuted, setIsMuted] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
 
-  // Check if current song is locked (premium without purchase)
-  const isPremium = currentSong?.is_premium === 1;
-  const hasAccess = currentSong?.can_play === true || 
-                    user?.subscription_status === 'premium' ||
-                    currentSong?.purchased === true;
-  const isLocked = isPremium && !hasAccess;
+  const isLocked = currentSong?.is_premium && !currentSong?.can_play && !isPremium && !currentSong?.purchased;
 
   useEffect(() => {
-    if (mediaRef.current) {
-      mediaRef.current.volume = volume / 100;
+    if (!authLoading && !user) {
+      navigate('/login?redirect=/player');
     }
-  }, [volume, mediaRef]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login?redirect=/player");
+    if (!currentSong && !authLoading) {
+      navigate('/browse');
     }
-  }, [user, loading, navigate]);
+  }, [currentSong, authLoading, navigate]);
 
   useEffect(() => {
-    if (!currentSong) {
-      navigate("/browse");
-      return;
-    }
-    
-    // If song is locked, redirect to payment
     if (isLocked && currentSong) {
-      toast.warning("This is a premium track. Please purchase it first.");
+      toast.warning('This is a premium track. Please purchase it first.');
       navigate(`/pro-deal?songId=${currentSong.id}`);
     }
-  }, [currentSong, isLocked, navigate]);
+  }, [isLocked, currentSong, navigate]);
 
   const handleSeek = (e) => {
     if (isLocked) return;
-    const seekTime = (e.target.value / 100) * duration;
-    seekTo(seekTime);
-  };
-
-  const handleVolumeChange = (e) => {
-    const newVolume = e.target.value;
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
-  };
-
-  const toggleMute = () => {
-    if (isMuted) {
-      setVolume(70);
-      setIsMuted(false);
-    } else {
-      setVolume(0);
-      setIsMuted(true);
-    }
-  };
-
-  const formatTime = (time) => {
-    if (!time || isNaN(time)) return "0:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    const val = parseFloat(e.target.value);
+    if (!isNaN(val) && duration) seekTo((val / 100) * duration);
   };
 
   const isLiked = currentSong && likedSongs?.some((s) => s.id === currentSong.id);
 
-  // Handle play/pause with lock check
-  const handlePlayPause = () => {
-    if (isLocked) {
-      toast.warning("This is a premium track. Please purchase it first.");
-      navigate(`/pro-deal?songId=${currentSong?.id}`);
-      return;
-    }
-    togglePlay();
-  };
+  const coverImage = currentSong?.cover_image && currentSong.cover_image !== 'null'
+    ? currentSong.cover_image : DEFAULT_COVER;
 
-  // Handle next song with lock check
-  const handleNext = () => {
-    if (isLocked) {
-      toast.warning("This is a premium track. Please purchase it first.");
-      navigate(`/pro-deal?songId=${currentSong?.id}`);
-      return;
-    }
-    nextSong();
-  };
+  const audioSrc = currentSong?.file_path?.trim() || null;
+  const isVideo = currentSong?.media_type === 'video';
 
-  // Handle previous song with lock check
-  const handlePrev = () => {
-    if (isLocked) {
-      toast.warning("This is a premium track. Please purchase it first.");
-      navigate(`/pro-deal?songId=${currentSong?.id}`);
-      return;
-    }
-    prevSong();
-  };
-
-  if (!currentSong) {
+  if (authLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="text-center">
-          <p className="text-white/50 mb-4">No song is playing</p>
-          <button
-            onClick={() => navigate("/browse")}
-            className="px-6 py-2 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white"
-          >
-            Browse Music
-          </button>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-12 h-12 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  // If locked, show purchase prompt instead of player
+  if (!currentSong) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <p className="text-slate-400">No song is playing</p>
+        <button onClick={() => navigate('/browse')} className="px-6 py-2.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-medium">
+          Browse Music
+        </button>
+      </div>
+    );
+  }
+
   if (isLocked) {
     return (
-      <div className="max-w-2xl mx-auto mt-12">
-        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-8 text-center">
+      <div className="max-w-md mx-auto mt-12">
+        <div className="glass-dark rounded-2xl border border-white/10 p-8 text-center">
           <div className="text-6xl mb-4">🔒</div>
-          <h1 className="text-2xl font-bold text-white mb-2">Premium Track Locked</h1>
-          <p className="text-white/60 mb-2">{currentSong.title} - {currentSong.artist}</p>
-          <p className="text-white/40 text-sm mb-6">
-            This is a premium track. Purchase it once to get lifetime access.
-          </p>
-          <button
-            onClick={() => navigate(`/pro-deal?songId=${currentSong.id}`)}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:scale-105 transition"
-          >
-            💎 Unlock for ${Number(currentSong.price || 0.99).toFixed(2)}
+          <h2 className="text-2xl font-bold text-white mb-2">Premium Track</h2>
+          <p className="text-slate-400 mb-1">{currentSong.title} &mdash; {currentSong.artist}</p>
+          <p className="text-slate-500 text-sm mb-6">Purchase this track for lifetime access.</p>
+          <button onClick={() => navigate(`/pro-deal?songId=${currentSong.id}`)} className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:scale-105 transition">
+            Unlock for ${Number(currentSong.price || 0.99).toFixed(2)}
           </button>
           <div className="mt-4">
-            <button
-              onClick={() => navigate("/browse")}
-              className="text-white/50 text-sm hover:text-white transition"
-            >
-              ← Back to Browse
+            <button onClick={() => navigate('/browse')} className="text-sm text-slate-500 hover:text-white transition">
+              &larr; Back to Browse
             </button>
           </div>
         </div>
@@ -171,321 +116,224 @@ function Player() {
     );
   }
 
-  const audioSrc = currentSong.file_path && String(currentSong.file_path).trim() !== ""
-    ? currentSong.file_path
-    : null;
-  const isVideo = currentSong?.media_type === "video";
-  const coverImage = currentSong.cover_image && currentSong.cover_image !== "null"
-    ? currentSong.cover_image
-    : DEFAULT_COVER;
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 text-white/60 hover:text-white transition"
-      >
-        <span className="text-xl">←</span>
-        <span>Back</span>
+    <div className="max-w-7xl mx-auto">
+      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-2 text-slate-500 hover:text-white transition text-sm">
+        <span>&larr;</span> Back
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Player */}
+        {/* Main Player */}
         <div className="lg:col-span-2">
-          <div className="bg-gradient-to-b from-white/10 to-black/20 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden">
-            
-            {/* Video or Album Art */}
-            {isVideo ? (
-              <div className="relative bg-black">
-                <video
-                  ref={mediaRef}
-                  src={audioSrc}
-                  className="w-full aspect-video object-contain"
-                  poster={coverImage}
-                  playsInline
-                  autoPlay={isPlaying}
-                />
-              </div>
-            ) : (
-              <div className="relative p-8 flex justify-center">
-                <div className="relative group">
-                  <img
-                    src={coverImage}
-                    alt={currentSong.title}
-                    className="w-64 h-64 md:w-80 md:h-80 rounded-2xl shadow-2xl object-cover"
-                    onError={(e) => {
-                      e.target.src = DEFAULT_COVER;
-                    }}
+          <div className="glass-dark rounded-2xl border border-white/10 overflow-hidden">
+            {/* Background blur */}
+            <div className="relative">
+              <div
+                className="absolute inset-0 bg-cover bg-center blur-3xl opacity-20"
+                style={{ backgroundImage: `url(${coverImage})` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-surface-900 via-surface-900/50 to-transparent" />
+
+              {/* Video or Album Art */}
+              <div className="relative p-6 md:p-10 flex justify-center">
+                {isVideo ? (
+                  <video
+                    ref={mediaRef}
+                    src={audioSrc}
+                    className="w-full max-w-lg aspect-video object-contain rounded-2xl shadow-2xl"
+                    poster={coverImage}
+                    playsInline
+                    autoPlay={isPlaying}
+                    controls
                   />
-                  <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl mb-2">{isPlaying ? "🎵" : "▶️"}</div>
-                      <p className="text-white text-sm">{isPlaying ? "Playing" : "Paused"}</p>
+                ) : (
+                  <div className="flex flex-col items-center gap-6">
+                    <div className="relative">
+                      <div className={`vinyl-record w-56 h-56 md:w-72 md:h-72 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '8s', animationTimingFunction: 'linear' }}>
+                        <img
+                          src={coverImage}
+                          alt={currentSong.title}
+                          className="absolute inset-0 w-full h-full rounded-full object-cover p-[18%]"
+                          onError={(e) => { e.target.src = DEFAULT_COVER; }}
+                        />
+                      </div>
+                      <div className="absolute inset-0 rounded-full shadow-[inset_0_0_30px_rgba(0,0,0,0.5)] pointer-events-none" />
                     </div>
+                    <WaveformBars isPlaying={isPlaying} />
                   </div>
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Song Info */}
-            <div className="p-6 border-t border-white/10">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 flex items-center gap-2">
-                    <span>{currentSong.title}</span>
-                    {currentSong?.is_premium && (
-                      <span className="inline-flex rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white align-middle">
-                        PRO
-                      </span>
+            <div className="p-6 md:p-8">
+              <div className="flex items-start justify-between mb-6">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-2xl md:text-3xl font-bold text-white truncate flex items-center gap-2">
+                    {currentSong.title}
+                    {currentSong.is_premium && (
+                      <span className="shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase">PRO</span>
                     )}
                   </h1>
-                  <p className="text-white/60 text-lg">{currentSong.artist}</p>
-                  {currentSong.album && (
-                    <p className="text-white/40 text-sm mt-1">{currentSong.album}</p>
-                  )}
+                  <p className="text-lg text-slate-400 mt-1">{currentSong.artist}</p>
+                  {currentSong.album && <p className="text-sm text-slate-500 mt-0.5">{currentSong.album}</p>}
                 </div>
                 <button
                   onClick={() => toggleLike(currentSong.id)}
-                  className="text-3xl hover:scale-110 transition"
+                  className={`shrink-0 text-2xl transition-all hover:scale-110 ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-red-400'}`}
+                  title={isLiked ? 'Unlike' : 'Like'}
                 >
-                  {isLiked ? "❤️" : "🤍"}
+                  {isLiked ? '❤️' : '🤍'}
                 </button>
               </div>
 
               {/* Progress Bar */}
-              <div className="mb-6">
+              <div className="mb-2">
                 <input
                   type="range"
-                  value={(currentTime / duration) * 100 || 0}
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={duration ? (currentTime / duration) * 100 : 0}
                   onChange={handleSeek}
-                  className="w-full h-1.5 rounded-full bg-white/20 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-red-500"
+                  className="range-input w-full"
                 />
-                <div className="flex justify-between text-xs text-white/50 mt-2">
+                <div className="flex justify-between text-xs text-slate-500 mt-1">
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
 
               {/* Controls */}
-              <div className="flex items-center justify-center gap-4 md:gap-8 mb-6">
-                <button
-                  onClick={handlePrev}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xl md:text-2xl transition hover:scale-110"
-                >
+              <div className="flex items-center justify-center gap-4 md:gap-6 my-6">
+                <button onClick={prevSong} className="text-slate-400 hover:text-white text-xl transition hover:scale-110" title="Previous">
                   ⏮
                 </button>
-                <button
-                  onClick={handlePlayPause}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center text-white text-3xl md:text-4xl transition hover:scale-110 shadow-lg"
-                >
-                  {isPlaying ? "⏸" : "▶"}
+                <button onClick={togglePlay} className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center text-white text-3xl md:text-4xl transition hover:scale-110 shadow-lg shadow-primary-500/25" title={isPlaying ? 'Pause' : 'Play'}>
+                  {isPlaying ? '⏸' : '▶'}
                 </button>
-                <button
-                  onClick={handleNext}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xl md:text-2xl transition hover:scale-110"
-                >
+                <button onClick={nextSong} className="text-slate-400 hover:text-white text-xl transition hover:scale-110" title="Next">
                   ⏭
                 </button>
               </div>
 
-              {/* Volume Control */}
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={toggleMute}
-                  className="text-white/70 hover:text-white text-xl"
-                >
-                  {isMuted || volume === 0 ? "🔇" : volume < 50 ? "🔉" : "🔊"}
+              {/* Volume & Misc Controls */}
+              <div className="flex items-center justify-center gap-4">
+                <button onClick={toggleMute} className="text-slate-500 hover:text-white transition text-lg" title={muted ? 'Unmute' : 'Mute'}>
+                  {muted ? '🔇' : '🔊'}
                 </button>
                 <input
                   type="range"
                   min="0"
                   max="100"
-                  value={volume}
-                  onChange={handleVolumeChange}
-                  className="w-32 h-1 rounded-full bg-white/20 appearance-none cursor-pointer"
+                  value={volume * 100}
+                  onChange={(e) => setVolume(parseInt(e.target.value) / 100)}
+                  className="range-input w-24 md:w-32"
                 />
-                <span className="text-white/50 text-xs">{Math.round(volume)}%</span>
+                <span className="text-xs text-slate-500 w-8 text-right">{Math.round(volume * 100)}%</span>
+                <div className="w-px h-6 bg-white/10" />
+                <button
+                  onClick={toggleLoop}
+                  className={`text-sm transition ${loop ? 'text-primary-400' : 'text-slate-500 hover:text-white'}`}
+                  title={loop ? 'Loop enabled' : 'Loop disabled'}
+                >
+                  🔁
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column - Related Music & Queue */}
+        {/* Sidebar: Related / Queue */}
         <div className="lg:col-span-1">
-          {/* Toggle between Related and Queue */}
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setShowQueue(false)}
-              className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition ${
-                !showQueue 
-                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white" 
-                  : "bg-white/10 text-white/60 hover:text-white"
-              }`}
+              className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition ${!showQueue ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white' : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'}`}
             >
-              🎵 Related {relatedSongs.length > 0 && `(${relatedSongs.length})`}
+              Up Next {relatedSongs.length > 0 && `(${relatedSongs.length})`}
             </button>
             <button
               onClick={() => setShowQueue(true)}
-              className={`flex-1 px-4 py-2 rounded-xl text-sm font-medium transition ${
-                showQueue 
-                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white" 
-                  : "bg-white/10 text-white/60 hover:text-white"
-              }`}
+              className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition ${showQueue ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white' : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'}`}
             >
-              📋 Queue {queue.length > 0 && `(${queue.length})`}
+              Queue {queue.length > 0 && `(${queue.length})`}
             </button>
           </div>
 
-          {/* Related Music Panel */}
-          {!showQueue && (
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span className="text-2xl">🎵</span>
-                Up Next
-              </h2>
-              
+          {!showQueue ? (
+            <div className="glass-dark rounded-2xl border border-white/10 p-4 sticky top-24 max-h-[500px] overflow-y-auto scrollbar-thin">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Related Songs</h3>
               {relatedSongs.length === 0 ? (
-                <p className="text-white/40 text-center py-8">
-                  No related songs found
-                </p>
+                <p className="text-slate-500 text-sm text-center py-8">No related songs found</p>
               ) : (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scroll">
-                  {relatedSongs.map((song, index) => {
-                    const isSongPremium = song?.is_premium === 1;
-                    const songHasAccess = song?.can_play === true || 
-                                          user?.subscription_status === 'premium' ||
-                                          song?.purchased === true;
-                    const isSongLocked = isSongPremium && !songHasAccess;
-                    
-                    return (
-                      <div
-                        key={song.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition cursor-pointer group"
-                        onClick={() => {
-                          if (isSongLocked) {
-                            toast.warning("This is a premium track. Please purchase it first.");
-                            navigate(`/pro-deal?songId=${song.id}`);
-                            return;
-                          }
-                          playSong({ ...song, can_play: true });
-                        }}
-                      >
-                        <div className="text-white/40 text-sm w-6">
-                          {index === 0 ? "▶" : index + 1}
-                        </div>
-                        <img
-                          src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
-                          alt={song.title}
-                          className="w-10 h-10 rounded-lg object-cover"
-                          onError={(e) => {
-                            e.target.src = DEFAULT_COVER;
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium truncate text-sm flex items-center gap-1">
-                            <span className="truncate">{song.title}</span>
-                            {isSongLocked && <span className="text-xs">🔒</span>}
-                          </p>
-                          <p className="text-white/40 text-xs truncate">
-                            {song.artist}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isSongLocked) {
-                              toast.warning("Purchase this song first to add to queue.");
-                              return;
-                            }
-                            addToQueue(song);
-                          }}
-                          className="text-white/30 hover:text-white/70 text-sm transition"
-                          title="Add to queue"
-                        >
-                          📋
-                        </button>
+                <div className="space-y-2">
+                  {relatedSongs.map((song, i) => (
+                    <button
+                      key={song.id}
+                      onClick={() => playSong({ ...song, can_play: true })}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition text-left group"
+                    >
+                      <span className="text-xs text-slate-500 w-5 shrink-0">{i === 0 ? '▶' : i + 1}</span>
+                      <img
+                        src={song.cover_image && song.cover_image !== 'null' ? song.cover_image : DEFAULT_COVER}
+                        alt={song.title}
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                        onError={(e) => { e.target.src = DEFAULT_COVER; }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{song.title}</p>
+                        <p className="text-xs text-slate-500 truncate">{song.artist}</p>
                       </div>
-                    );
-                  })}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addToQueue(song); }}
+                        className="text-slate-500 hover:text-primary-400 transition text-xs shrink-0 opacity-0 group-hover:opacity-100"
+                        title="Add to queue"
+                      >
+                        + Queue
+                      </button>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-          )}
-
-          {/* Queue Panel */}
-          {showQueue && (
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 sticky top-24">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span className="text-2xl">📋</span>
-                  Queue
-                </h2>
+          ) : (
+            <div className="glass-dark rounded-2xl border border-white/10 p-4 sticky top-24 max-h-[500px] overflow-y-auto scrollbar-thin">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Queue</h3>
                 {queue.length > 0 && (
-                  <button
-                    onClick={clearQueue}
-                    className="text-xs text-white/50 hover:text-red-400 transition"
-                  >
-                    Clear all
-                  </button>
+                  <button onClick={clearQueue} className="text-xs text-slate-500 hover:text-red-400 transition">Clear</button>
                 )}
               </div>
-              
               {queue.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-white/40 text-sm mb-2">Queue is empty</p>
-                  <p className="text-white/30 text-xs">Click the 📋 button on any song to add to queue</p>
+                  <p className="text-slate-500 text-sm">Queue is empty</p>
+                  <p className="text-slate-600 text-xs mt-1">Add songs from the &ldquo;Up Next&rdquo; tab</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scroll">
-                  {queue.map((song, index) => {
-                    const isSongPremium = song?.is_premium === 1;
-                    const songHasAccess = song?.can_play === true || 
-                                          user?.subscription_status === 'premium' ||
-                                          song?.purchased === true;
-                    const isSongLocked = isSongPremium && !songHasAccess;
-                    
-                    return (
-                      <div
-                        key={song.id + index}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group"
-                      >
-                        <div className="text-white/40 text-sm w-6">
-                          {index === 0 ? "▶" : index + 1}
-                        </div>
-                        <img
-                          src={song.cover_image && song.cover_image !== "null" ? song.cover_image : DEFAULT_COVER}
-                          alt={song.title}
-                          className="w-10 h-10 rounded-lg object-cover"
-                          onError={(e) => {
-                            e.target.src = DEFAULT_COVER;
-                          }}
-                        />
-                        <div className="flex-1 min-w-0" onClick={() => {
-                          if (isSongLocked) {
-                            toast.warning("This is a premium track. Please purchase it first.");
-                            return;
-                          }
-                          playSong({ ...song, can_play: true });
-                        }}>
-                          <p className="text-white font-medium truncate text-sm flex items-center gap-1">
-                            <span className="truncate">{song.title}</span>
-                            {isSongLocked && <span className="text-xs">🔒</span>}
-                          </p>
-                          <p className="text-white/40 text-xs truncate">
-                            {song.artist}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => removeFromQueue(song.id)}
-                          className="text-white/30 hover:text-red-400 text-sm transition"
-                          title="Remove from queue"
-                        >
-                          ✕
-                        </button>
+                <div className="space-y-2">
+                  {queue.map((song, i) => (
+                    <div key={`${song.id}-${i}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition group">
+                      <span className="text-xs text-slate-500 w-5 shrink-0">{i + 1}</span>
+                      <img
+                        src={song.cover_image && song.cover_image !== 'null' ? song.cover_image : DEFAULT_COVER}
+                        alt={song.title}
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                        onError={(e) => { e.target.src = DEFAULT_COVER; }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{song.title}</p>
+                        <p className="text-xs text-slate-500 truncate">{song.artist}</p>
                       </div>
-                    );
-                  })}
+                      <button
+                        onClick={() => removeFromQueue(song.id)}
+                        className="text-slate-500 hover:text-red-400 transition text-xs shrink-0 opacity-0 group-hover:opacity-100"
+                        title="Remove"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -493,12 +341,8 @@ function Player() {
         </div>
       </div>
 
-      {/* Hidden audio element for audio playback */}
-      {!isVideo && (
-        <audio ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />
-      )}
+      {/* Hidden audio element */}
+      {!isVideo && <audio ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />}
     </div>
   );
 }
-
-export default Player;

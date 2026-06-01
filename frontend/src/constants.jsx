@@ -1,15 +1,54 @@
-/** Same base as `src/services/api.js` (Vite proxy `/api` in dev). */
-export { API_BASE } from "./services/api";
+export const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 
 export const GENRES = [
-  "Rock",
-  "Pop",
-  "Jazz",
-  "Electronic",
+  "Afrobeat",
+  "Blues",
   "Classical",
-  "Hip Hop",
-  "R&B",
   "Country",
+  "Electronic",
+  "Folk",
+  "Funk",
+  "Hip Hop",
+  "Jazz",
+  "Latin",
+  "Metal",
+  "Pop",
+  "R&B",
+  "Rap",
+  "Reggae",
+  "Rock",
+  "Soul",
+  "Traditional",
 ];
 
 export const DEFAULT_COVER = "/assets/images/default-cover.svg";
+
+export const ROLES = {
+  AUDIENCE: "audience",
+  MUSICIAN: "musician",
+  ADMIN: "admin",
+};
+
+export const SUBSCRIPTION_TYPES = {
+  FREE: "free",
+  PREMIUM: "premium",
+};
+
+export const MEDIA_TYPES = {
+  AUDIO: "audio",
+  VIDEO: "video",
+};
+
+export const PAYMENT_TYPES = {
+  SONG: "song",
+  SUBSCRIPTION: "subscription",
+  TICKET: "ticket",
+};
+
+export const STREAM_STATUS = {
+  SCHEDULED: "scheduled",
+  LIVE: "live",
+  ENDED: "ended",
+};
+
+export const ITEMS_PER_PAGE = 12;

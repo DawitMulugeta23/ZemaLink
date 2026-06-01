@@ -1,125 +1,128 @@
-import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { useState } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useTheme } from "./context/ThemeContext";
+import { useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import LoadingSpinner from "./components/common/LoadingSpinner";
 import Navbar from "./components/layout/Navbar";
 import Sidebar from "./components/layout/Sidebar";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
-import { PlayerProvider } from "./context/PlayerContext";
-import AdminRegistered from "./pages/AdminRegistered";
-import AdminDashboard from "./pages/AdminDashboard";
-import Browse from "./pages/Browse";
-import Home from "./pages/Home";
-import Library from "./pages/Library";
-import Login from "./pages/Login";
-import MusicianDashboard from "./pages/MusicianDashboard";
-import Premium from "./pages/Premium";
-import ProDeal from "./pages/ProDeal";
-import Playlist from "./pages/Playlist";
-import Profile from "./pages/Profile";
-import Purchased from "./pages/Purchased";
-import Register from "./pages/Register";
-import Subscription from "./pages/Subscription";
-import VerifyEmail from "./pages/VerifyEmail";
-import Player from "./pages/Player";
-import Settings from "./pages/Settings";
+import MusicPlayer from "./components/music/MusicPlayer";
+import Background from "./components/layout/Background";
 
-function App() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+// Pages
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
+import Browse from "./pages/Browse";
+import Search from "./pages/Search";
+import Library from "./pages/Library";
+import Player from "./pages/Player";
+import Playlists from "./pages/Playlists";
+import PlaylistDetail from "./pages/PlaylistDetail";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import Events from "./pages/Events";
+import LiveStreams from "./pages/LiveStreams";
+import StreamView from "./pages/StreamView";
+import MusicianDashboard from "./pages/MusicianDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminRegistered from "./pages/AdminRegistered";
+import Subscription from "./pages/Subscription";
+import Purchased from "./pages/Purchased";
+import ProDeal from "./pages/ProDeal";
+
+function AppContent() {
+  const { user, loading } = useAuth();
+  const { theme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const location = useLocation();
+
+  if (loading) return <LoadingSpinner fullScreen />;
+
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/verify-email";
 
   return (
-    <Router>
-      <AuthProvider>
-        <PlayerProvider>
-          <div
-            className="min-h-screen bg-fixed bg-center bg-cover bg-no-repeat"
-            style={{
-              backgroundImage: "url('/assets/images/d.jpg')",
-            }}
-          >
-            <div className="min-h-screen bg-black/30">
-              <Navbar />
-              <div className="flex pt-16">
-                <Sidebar
-                  isCollapsed={isSidebarCollapsed}
-                  onToggle={() => setIsSidebarCollapsed((prev) => !prev)}
-                />
-                <main
-                  className={`flex-1 ml-0 pt-4 pb-24 px-4 md:px-8 transition-all duration-300 ${
-                    isSidebarCollapsed ? "md:ml-24" : "md:ml-72"
-                  }`}
-                >
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/verify-email" element={<VerifyEmail />} />
-                    <Route path="/" element={<Home />} />
-                    <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
-                    <Route path="/browse" element={<Browse />} />
-                    <Route path="/library" element={<Library />} />
-                    <Route path="/playlist/:id" element={<Playlist />} />
-                    <Route path="/premium" element={<Premium />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route
-                      path="/pro-deal"
-                      element={
-                        <ProtectedRoute>
-                          <ProDeal />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/subscription"
-                      element={
-                        <ProtectedRoute>
-                          <Subscription />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route
-                      path="/purchased"
-                      element={
-                        <ProtectedRoute>
-                          <Purchased />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin-registered"
-                      element={
-                        <ProtectedRoute roles={["admin"]}>
-                          <AdminRegistered />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin-dashboard"
-                      element={
-                        <ProtectedRoute roles={["admin"]}>
-                          <AdminDashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/musician-dashboard"
-                      element={
-                        <ProtectedRoute roles={["musician"]}>
-                          <MusicianDashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                  </Routes>
-                </main>
-              </div>
-              <ToastContainer position="top-right" autoClose={3000} theme="dark" />
-            </div>
-          </div>
-        </PlayerProvider>
-      </AuthProvider>
-    </Router>
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300">
+      <Background />
+      {!isAuthPage && (
+        <>
+          <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+          <Sidebar
+            isCollapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            mobileOpen={sidebarOpen}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        </>
+      )}
+      <div className={`${isAuthPage ? "" : "pt-16"} flex`}>
+        <main
+          className={`flex-1 transition-all duration-300 ${
+            isAuthPage ? "" : sidebarCollapsed ? "lg:ml-16" : "lg:ml-60"
+          } min-h-[calc(100vh-4rem)] pb-28 px-4 md:px-6 lg:px-8`}
+        >
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+
+            {/* Auth Required */}
+            <Route path="/browse" element={<ProtectedRoute><Browse /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+            <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
+            <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
+            <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
+              <Route path="/playlist/:id" element={<ProtectedRoute><PlaylistDetail /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+            <Route path="/live-streams" element={<ProtectedRoute><LiveStreams /></ProtectedRoute>} />
+            <Route path="/live-streams/:id" element={<ProtectedRoute><StreamView /></ProtectedRoute>} />
+            <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
+            <Route path="/purchased" element={<ProtectedRoute><Purchased /></ProtectedRoute>} />
+            <Route path="/pro-deal" element={<ProtectedRoute><ProDeal /></ProtectedRoute>} />
+            <Route path="/pro-deal/:id" element={<ProtectedRoute><ProDeal /></ProtectedRoute>} />
+
+            {/* Role-specific */}
+            <Route
+              path="/musician-dashboard"
+              element={<ProtectedRoute roles={["musician"]}><MusicianDashboard /></ProtectedRoute>}
+            />
+            <Route
+              path="/admin-dashboard"
+              element={<ProtectedRoute roles={["admin"]}><AdminDashboard /></ProtectedRoute>}
+            />
+            <Route
+              path="/admin-registered"
+              element={<ProtectedRoute roles={["admin"]}><AdminRegistered /></ProtectedRoute>}
+            />
+          </Routes>
+        </main>
+      </div>
+      {user && <MusicPlayer />}
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={theme === "light" ? "light" : "dark"}
+      />
+    </div>
   );
 }
 
-export default App;
+export default function App() {
+  return <AppContent />;
+}

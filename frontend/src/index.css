@@ -2,76 +2,278 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base Layer ─── */
 @layer base {
   * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+    @apply transition-colors duration-200;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
-    font-family:
-      "Inter",
-      system-ui,
-      -apple-system,
-      sans-serif;
-    background: url("/assets/images/default-cover.svg") no-repeat center center
-      fixed;
-    background-size: cover;
-    min-height: 100vh;
-    color: #ffffff;
+    @apply bg-surface dark:bg-surface-dark text-surface-800 dark:text-surface-200 font-sans;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  ::selection {
+    @apply bg-primary-500/30 text-white;
   }
 }
 
-@layer utilities {
+/* ─── Components Layer ─── */
+@layer components {
+  /* ── Glassmorphism ── */
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-lg;
+  }
+
+  .glass-dark {
+    @apply bg-surface-900/70 backdrop-blur-lg border border-surface-700/50 shadow-lg;
+  }
+
+  .glass-primary {
+    @apply bg-primary-500/10 backdrop-blur-lg border border-primary-500/20 shadow-lg;
+  }
+
+  /* ── Gradient Text ── */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 via-primary-500 to-accent-500;
+  }
+
+  .gradient-text-purple {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-600;
+  }
+
+  .gradient-text-pink {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-400 to-accent-600;
+  }
+
+  /* ── Neon Glow Effects ── */
+  .neon-glow {
+    box-shadow: 0 0 10px theme('colors.primary.500' / 50%),
+                0 0 20px theme('colors.primary.500' / 30%),
+                0 0 40px theme('colors.primary.500' / 10%);
+  }
+
+  .neon-glow-accent {
+    box-shadow: 0 0 10px theme('colors.accent.500' / 50%),
+                0 0 20px theme('colors.accent.500' / 30%),
+                0 0 40px theme('colors.accent.500' / 10%);
+  }
+
+  .neon-glow-text {
+    text-shadow: 0 0 10px theme('colors.primary.500' / 50%),
+                 0 0 20px theme('colors.primary.500' / 30%);
+  }
+
+  /* ── Custom Scrollbar ── */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.surface.400') transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: theme('colors.surface.400');
+    border-radius: 9999px;
+    border: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: theme('colors.surface.500');
+  }
+
+  .scrollbar-thin.dark::-webkit-scrollbar-thumb,
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: theme('colors.surface.600');
+  }
+
+  .scrollbar-thin.dark::-webkit-scrollbar-thumb:hover,
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: theme('colors.surface.500');
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* ── Custom Range Input (Player) ── */
+  input[type='range'].range-input {
+    @apply appearance-none w-full h-1.5 rounded-full bg-surface-200 dark:bg-surface-700 cursor-pointer outline-none;
+  }
+
+  input[type='range'].range-input::-webkit-slider-thumb {
+    @apply appearance-none w-3.5 h-3.5 rounded-full bg-primary-500 cursor-pointer shadow-md;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input[type='range'].range-input::-webkit-slider-thumb:hover {
+    @apply scale-125;
+    box-shadow: 0 0 12px theme('colors.primary.500' / 60%);
+  }
+
+  input[type='range'].range-input::-moz-range-thumb {
+    @apply w-3.5 h-3.5 rounded-full bg-primary-500 cursor-pointer border-none shadow-md;
+  }
+
+  input[type='range'].range-input::-moz-range-track {
+    @apply h-1.5 rounded-full bg-surface-200 dark:bg-surface-700;
+  }
+
+  /* ── Vinyl Record ── */
+  .vinyl-record {
+    @apply rounded-full bg-black;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(
+      circle at center,
+      #333 0%,
+      #1a1a1a 15%,
+      #111 20%,
+      #1a1a1a 25%,
+      #0d0d0d 30%,
+      #1a1a1a 35%,
+      #0d0d0d 40%,
+      #111 45%,
+      #1a1a1a 50%,
+      #0d0d0d 55%,
+      #111 60%,
+      #1a1a1a 65%,
+      #0d0d0d 70%,
+      #1a1a1a 75%,
+      #111 80%,
+      #1a1a1a 85%,
+      #0d0d0d 90%,
+      #111 95%,
+      #1a1a1a 100%
+    );
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  .vinyl-record::after {
+    content: '';
+    @apply absolute rounded-full bg-primary-500;
+    width: 40px;
+    height: 40px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 15px theme('colors.primary.500' / 50%);
+  }
+
+  /* ── Waveform Bars ── */
+  .waveform-bar {
+    @apply bg-primary-500 rounded-full;
+    animation: waveform 1.2s ease-in-out infinite;
+  }
+
+  .waveform-bar:nth-child(1) { animation-delay: 0s; }
+  .waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+  .waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+  .waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+  .waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+  .waveform-bar:nth-child(6) { animation-delay: 0.5s; }
+  .waveform-bar:nth-child(7) { animation-delay: 0.6s; }
+  .waveform-bar:nth-child(8) { animation-delay: 0.7s; }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* ─── Toast Notification Overrides ─── */
+.Toastify__toast {
+  @apply glass-dark text-surface-200 rounded-xl shadow-2xl border border-surface-700/50;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+.Toastify__toast--success {
+  @apply border-green-500/30;
 }
 
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #ef4444, #ec4899);
-  border-radius: 10px;
-}
-/* Tooltip animations */
-.group {
-  position: relative;
+.Toastify__toast--success .Toastify__progress-bar {
+  @apply bg-green-500;
 }
 
-.group .tooltip {
-  visibility: hidden;
-  opacity: 0;
-  transition: all 0.2s ease-in-out;
-  transform: translateX(-5px);
+.Toastify__toast--error {
+  @apply border-red-500/30;
 }
 
-.group:hover .tooltip {
-  visibility: visible;
-  opacity: 1;
-  transform: translateX(0);
+.Toastify__toast--error .Toastify__progress-bar {
+  @apply bg-red-500;
 }
 
-/* Custom scrollbar for related music section */
-.custom-scroll::-webkit-scrollbar {
-  width: 4px;
+.Toastify__toast-body {
+  @apply text-sm;
 }
 
-.custom-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+.Toastify__close-button {
+  @apply text-surface-400 hover:text-white;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #ef4444, #ec4899);
-  border-radius: 10px;
+/* ─── Keyframe Animations ─── */
+@keyframes waveform {
+  0%, 100% {
+    transform: scaleY(0.3);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* ─── Dark Mode Color Scheme ─── */
+.dark .glass {
+  @apply bg-surface-900/70 border-surface-700/50;
+}
+
+.dark .Toastify__toast {
+  @apply bg-surface-900/90 border-surface-700/50;
+}
+
+/* ─── Mobile-First Responsive Breakpoints ─── */
+@screen sm {
+  .container-sm {
+    @apply max-w-screen-sm mx-auto px-4;
+  }
+}
+
+@screen md {
+  .container-md {
+    @apply max-w-screen-md mx-auto px-6;
+  }
+}
+
+@screen lg {
+  .container-lg {
+    @apply max-w-screen-lg mx-auto px-8;
+  }
+}
+
+@screen xl {
+  .container-xl {
+    @apply max-w-screen-xl mx-auto px-10;
+  }
+}
+
+/* ─── Utility: Smooth transitions on interactive elements ─── */
+a, button, input, select, textarea {
+  @apply transition-all duration-200;
+}
+
+/* ─── Utility: Focus ring ─── */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface dark:focus:ring-offset-surface-dark;
 }

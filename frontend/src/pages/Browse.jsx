@@ -1,228 +1,293 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import SongCard from "../components/music/SongCard";
-import { songService } from "../services/songService";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import SongCard from '../components/music/SongCard';
+import { songService } from '../services/songService';
+import { GENRES, ITEMS_PER_PAGE } from '../constants';
 
-function Browse() {
+const SORT_OPTIONS = [
+  { value: 'popular', label: 'Most Popular' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'top-rated', label: 'Top Rated' },
+];
+
+const MEDIA_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
+];
+
+function GridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+        <div key={i} className="animate-pulse rounded-3xl bg-white/5 border border-white/[0.08] p-4">
+          <div className="aspect-square rounded-2xl bg-white/10 mb-4" />
+          <div className="h-3 bg-white/10 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-white/10 rounded w-1/2 mb-3" />
+          <div className="h-4 bg-white/10 rounded w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [songs, setSongs] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [recentSearches, setRecentSearches] = useState(() => {
-    const saved = localStorage.getItem("recentSearches");
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [filteredRecent, setFilteredRecent] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [selectedGenre, setSelectedGenre] = useState(searchParams.get('genre') || 'All');
+  const [mediaFilter, setMediaFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('popular');
+  const [page, setPage] = useState(1);
+  const [totalSongs, setTotalSongs] = useState(0);
+  const [error, setError] = useState('');
 
-  const sortSongsByEngagement = (songsList) => {
-    return [...songsList].sort((a, b) => {
-      const likesDiff = (b.likes_count || 0) - (a.likes_count || 0);
-      if (likesDiff !== 0) return likesDiff;
-      return (b.plays || 0) - (a.plays || 0);
+  const totalPages = Math.max(1, Math.ceil(totalSongs / ITEMS_PER_PAGE));
+
+  const loadSongs = useCallback(async (opts = {}) => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = {};
+      if (opts.search || searchQuery) params.search = opts.search || searchQuery;
+      if (opts.genre && opts.genre !== 'All') params.genre = opts.genre;
+      if (!opts.genre || opts.genre === 'All') {
+        params.page = opts.page || page;
+        params.limit = ITEMS_PER_PAGE;
+      }
+      let data = await songService.getSongs(params);
+
+      if (!data || data.length === 0) {
+        setSongs([]);
+        setTotalSongs(0);
+        return;
+      }
+
+      let sorted = [...data];
+      const sort = opts.sort || sortBy;
+      if (sort === 'popular') {
+        sorted.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0) || (b.plays || 0) - (a.plays || 0));
+      } else if (sort === 'newest') {
+        sorted.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      } else if (sort === 'top-rated') {
+        sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      }
+
+      if (opts.media && opts.media !== 'all') {
+        sorted = sorted.filter((s) => s.media_type === opts.media);
+      }
+
+      setSongs(sorted);
+      setTotalSongs(sorted.length);
+    } catch (err) {
+      setError('Failed to load songs. Please try again.');
+      setSongs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, selectedGenre, sortBy, mediaFilter, page]);
+
+  useEffect(() => {
+    const genreParam = searchParams.get('genre');
+    const searchParam = searchParams.get('search');
+    const sortParam = searchParams.get('sort');
+    if (genreParam) setSelectedGenre(genreParam);
+    if (searchParam) setSearchQuery(searchParam);
+    if (sortParam) setSortBy(sortParam);
+  }, []);
+
+  useEffect(() => {
+    loadSongs({
+      search: searchQuery,
+      genre: selectedGenre,
+      sort: sortBy,
+      media: mediaFilter,
+      page: 1,
     });
+  }, [searchQuery, selectedGenre, sortBy, mediaFilter]);
+
+  const handleGenreSelect = (genre) => {
+    setSelectedGenre(genre);
+    setPage(1);
+    setSearchParams(genre !== 'All' ? { genre } : {});
   };
 
-  const loadSongs = async () => {
-    setLoading(true);
-    try {
-      const data = await songService.getSongs();
-      console.log("Loaded songs:", data);
-      setSongs(sortSongsByEngagement(data || []));
-    } catch (error) {
-      console.error("Error loading songs:", error);
-      setSongs([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPage(1);
+    setSearchParams(searchQuery ? { search: searchQuery } : {});
+    loadSongs({ search: searchQuery, genre: selectedGenre, sort: sortBy, media: mediaFilter, page: 1 });
   };
 
-  const searchByGenre = async (genre) => {
-    setLoading(true);
-    try {
-      const allSongs = await songService.getSongs();
-      console.log("All songs for genre search:", allSongs);
-      const filtered = allSongs.filter(
-        (song) => song.genre?.toLowerCase() === genre.toLowerCase()
-      );
-      console.log(`Filtered by genre ${genre}:`, filtered);
-      setSongs(sortSongsByEngagement(filtered));
-      setSearchQuery(`Genre: ${genre}`);
-    } catch (error) {
-      console.error("Genre search error:", error);
-      setSongs([]);
-    } finally {
-      setLoading(false);
-    }
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setPage(newPage);
+    loadSongs({ page: newPage });
   };
 
-  // Check URL params on component mount
-  useEffect(() => {
-    const genreParam = searchParams.get("genre");
-    const searchParam = searchParams.get("search");
-    
-    if (genreParam) {
-      searchByGenre(genreParam);
-    } else if (searchParam) {
-      setSearchQuery(searchParam);
-      performSearch(searchParam);
-    } else {
-      loadSongs();
-    }
-  }, [searchParams]);
-
-  const performSearch = async (query) => {
-    if (!query.trim()) {
-      loadSongs();
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const data = await songService.search(query);
-      setSongs(sortSongsByEngagement(data || []));
-
-      // Save to recent searches
-      const updated = [
-        query,
-        ...recentSearches.filter((s) => s !== query),
-      ].slice(0, 5);
-      setRecentSearches(updated);
-      localStorage.setItem("recentSearches", JSON.stringify(updated));
-    } catch (error) {
-      console.error("Search error:", error);
-      setSongs([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedGenre('All');
+    setMediaFilter('all');
+    setSortBy('popular');
+    setPage(1);
+    setSearchParams({});
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      loadSongs();
-      return;
-    }
-    await performSearch(searchQuery);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") handleSearch();
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-    loadSongs();
-  };
-
-  useEffect(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) {
-      setFilteredRecent(recentSearches);
-      return;
-    }
-    setFilteredRecent(
-      recentSearches.filter((term) => term.toLowerCase().includes(q))
-    );
-  }, [searchQuery, recentSearches]);
+  const hasActiveFilters = searchQuery || selectedGenre !== 'All' || mediaFilter !== 'all' || sortBy !== 'popular';
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Search Header */}
-      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold mb-4 bg-gradient-to-r from-red-400 via-yellow-400 to-pink-400 bg-clip-text text-transparent">
-          Browse Music
-        </h1>
-
-        <div className="flex gap-3">
+      {/* Search & Filters */}
+      <div className="glass-dark rounded-2xl border border-white/10 p-6 mb-8">
+        <form onSubmit={handleSearch} className="flex gap-3 mb-6">
           <div className="flex-1 relative">
             <input
               type="text"
-              placeholder="Search by song, artist, album, or genre..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-red-500 transition"
+              placeholder="Search by song, artist, album..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 transition"
             />
-            {searchQuery && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
-              >
-                ✕
-              </button>
-            )}
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
-          <button
-            onClick={handleSearch}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold hover:scale-105 transition"
-          >
+          <button type="submit" className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold hover:scale-105 transition shrink-0">
             Search
           </button>
-        </div>
+        </form>
 
-        {/* Recent Searches */}
-        {searchQuery.trim() !== "" && filteredRecent.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="text-xs text-white/50">Recent:</span>
-            {filteredRecent.map((term, i) => (
+        {/* Genre Filters */}
+        <div className="mb-4">
+          <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Genres</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {['All', ...GENRES].map((genre) => (
               <button
-                key={i}
-                onClick={() => {
-                  setSearchQuery(term);
-                  setTimeout(() => performSearch(term), 100);
-                }}
-                className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 transition"
+                key={genre}
+                onClick={() => handleGenreSelect(genre)}
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+                  selectedGenre === genre
+                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10'
+                }`}
               >
-                {term}
+                {genre}
               </button>
             ))}
           </div>
-        )}
+        </div>
+
+        {/* Media & Sort Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">Type:</span>
+            {MEDIA_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setMediaFilter(f.value)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  mediaFilter === f.value
+                    ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
+                    : 'text-slate-500 hover:text-slate-300 border border-white/10'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary-500"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} className="bg-surface-900">{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {hasActiveFilters && (
+            <button onClick={handleClearFilters} className="text-xs text-accent-400 hover:text-accent-300 transition ml-auto">
+              Clear all filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Results */}
       {loading ? (
-        <div className="flex justify-center items-center min-h-[400px]">
-          <div className="w-12 h-12 border-4 border-white/20 border-t-red-500 rounded-full animate-spin"></div>
+        <GridSkeleton />
+      ) : error ? (
+        <div className="glass-dark rounded-2xl p-12 text-center">
+          <div className="text-4xl mb-3">⚠️</div>
+          <p className="text-slate-400 mb-4">{error}</p>
+          <button onClick={() => loadSongs({ page: 1 })} className="px-6 py-2 rounded-full bg-primary-500 text-white font-medium hover:bg-primary-600 transition">
+            Retry
+          </button>
+        </div>
+      ) : songs.length === 0 ? (
+        <div className="glass-dark rounded-2xl p-12 text-center">
+          <div className="text-5xl mb-4">🎵</div>
+          <p className="text-slate-400 text-lg mb-2">No songs found</p>
+          <p className="text-slate-500 text-sm mb-6">
+            {hasActiveFilters ? 'Try adjusting your filters or search query.' : 'No songs have been uploaded yet.'}
+          </p>
+          {hasActiveFilters && (
+            <button onClick={handleClearFilters} className="px-6 py-2 rounded-full bg-primary-500 text-white font-medium hover:bg-primary-600 transition">
+              Clear Filters
+            </button>
+          )}
         </div>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-6 gap-3">
-            <div>
-              <h2 className="text-xl font-semibold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
-                {searchQuery ? `Results for "${searchQuery}"` : "Popular Songs"}
-              </h2>
-              {!searchQuery && (
-                <p className="text-sm text-white/50 mt-1">
-                  Sorted by likes and viewer counts for the most popular music.
-                </p>
-              )}
-            </div>
-            <span className="text-sm text-white/50">
-              {songs.length} song{songs.length !== 1 ? "s" : ""} found
-            </span>
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-sm text-slate-400">
+              {totalSongs} song{totalSongs !== 1 ? 's' : ''} found
+              {selectedGenre !== 'All' && <span className="text-slate-500"> in <span className="text-slate-300">{selectedGenre}</span></span>}
+            </p>
           </div>
 
-          {songs.length === 0 ? (
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-12 text-center">
-              <p className="text-white/50">
-                {searchQuery
-                  ? "No songs found. Try a different search."
-                  : "No songs available yet."}
-              </p>
-              {searchQuery && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+            {songs.map((song) => (
+              <SongCard key={song.id} song={song} />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-10">
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page <= 1}
+                className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                &larr; Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                 <button
-                  onClick={clearSearch}
-                  className="mt-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-white/70 text-sm"
+                  key={p}
+                  onClick={() => handlePageChange(p)}
+                  className={`w-10 h-10 rounded-lg text-sm font-medium transition ${
+                    p === page
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                  }`}
                 >
-                  Clear search and show all songs
+                  {p}
                 </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-              {songs.map((song) => (
-                <SongCard key={song.id} song={song} onAccessGranted={loadSongs} />
               ))}
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page >= totalPages}
+                className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                Next &rarr;
+              </button>
             </div>
           )}
         </>
@@ -230,5 +295,3 @@ function Browse() {
     </div>
   );
 }
-
-export default Browse;

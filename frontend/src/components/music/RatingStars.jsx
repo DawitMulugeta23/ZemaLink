@@ -1,63 +1,128 @@
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 
-function RatingStars({ songId, rating: propRating, likesCount, playsCount }) {
-  // Convert rating to number safely
-  const [rating, setRating] = useState(() => {
-    const num = parseFloat(propRating);
-    return isNaN(num) ? 0 : num;
-  });
-
-  useEffect(() => {
-    const num = parseFloat(propRating);
-    setRating(isNaN(num) ? 0 : num);
-  }, [propRating]);
-
-  const getStarIcon = (starValue) => {
-    const isFilled = rating >= starValue;
-    const isHalfFilled = rating > starValue - 0.5 && rating < starValue;
-    
-    if (isHalfFilled) {
-      return (
-        <div key={starValue} className="relative inline-block">
-          <svg className="w-4 h-4 text-gray-400 fill-none" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-          <svg className="w-4 h-4 text-yellow-400 fill-yellow-400 absolute top-0 left-0 overflow-hidden" style={{ width: '50%' }} viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        </div>
-      );
-    }
-    
-    return (
-      <svg
-        key={starValue}
-        className={`w-4 h-4 ${isFilled ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400 fill-none'}`}
-        fill="currentColor"
-        viewBox="0 0 20 20"
-      >
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-      </svg>
-    );
-  };
-
-  // Ensure counts are numbers
-  const safePlaysCount = typeof playsCount === 'number' ? playsCount : parseInt(playsCount) || 0;
-  const safeLikesCount = typeof likesCount === 'number' ? likesCount : parseInt(likesCount) || 0;
-
+function StarOutline({ className }) {
   return (
-    <div className="flex flex-col items-start gap-1">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map(star => getStarIcon(star))}
-        <span className="text-xs text-white/50 ml-1">({rating.toFixed(1)})</span>
-      </div>
-      {(safePlaysCount > 0 || safeLikesCount > 0) && (
-        <p className="text-[10px] text-white/40">
-          Based on {safePlaysCount.toLocaleString()} plays • {safeLikesCount} likes
-        </p>
-      )}
-    </div>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
   );
 }
 
-export default RatingStars;
+function StarFilled({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
+
+function StarHalf({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24">
+      <defs>
+        <clipPath id="halfClip">
+          <rect x="0" y="0" width="12" height="24" />
+        </clipPath>
+      </defs>
+      <path
+        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        className="text-surface-300 dark:text-surface-600"
+      />
+      <path
+        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+        fill="currentColor"
+        clipPath="url(#halfClip)"
+        className="text-amber-400"
+      />
+    </svg>
+  );
+}
+
+const SIZE_MAP = {
+  sm: { star: "w-3 h-3 sm:w-3.5 sm:h-3.5", text: "text-[10px] sm:text-xs", gap: "gap-0.5" },
+  md: { star: "w-4 h-4 sm:w-5 sm:h-5", text: "text-xs sm:text-sm", gap: "gap-0.5 sm:gap-1" },
+  lg: { star: "w-5 h-5 sm:w-6 sm:h-6", text: "text-sm sm:text-base", gap: "gap-1" },
+};
+
+function getStarType(value, index) {
+  const starIndex = index + 1;
+  if (value >= starIndex) return "full";
+  if (value >= starIndex - 0.5) return "half";
+  return "empty";
+}
+
+export default function RatingStars({ rating = 0, size = "md", interactive = false, onRate }) {
+  const [hoverRating, setHoverRating] = useState(0);
+
+  const normalizedRating = Math.max(0, Math.min(5, parseFloat(rating) || 0));
+  const displayRating = interactive && hoverRating > 0 ? hoverRating : normalizedRating;
+
+  const { star: starSize, text: textSize, gap } = SIZE_MAP[size] || SIZE_MAP.md;
+
+  const handleClick = useCallback(
+    (value) => {
+      if (interactive && onRate) {
+        onRate(value);
+      }
+    },
+    [interactive, onRate],
+  );
+
+  const handleMouseEnter = useCallback((value) => {
+    if (interactive) setHoverRating(value);
+  }, [interactive]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (interactive) setHoverRating(0);
+  }, [interactive]);
+
+  const starClass = `inline-block flex-shrink-0 ${starSize} ${
+    interactive ? "cursor-pointer transition-transform hover:scale-110" : ""
+  }`;
+
+  return (
+    <div
+      className={`inline-flex items-center ${gap}`}
+      role="img"
+      aria-label={`Rating: ${normalizedRating.toFixed(1)} out of 5 stars`}
+    >
+      {[0, 1, 2, 3, 4].map((index) => {
+        const type = getStarType(displayRating, index);
+        const value = index + 1;
+        return (
+          <span
+            key={index}
+            onClick={() => handleClick(value)}
+            onMouseEnter={() => handleMouseEnter(value)}
+            onMouseLeave={handleMouseLeave}
+            className={`${starClass} ${
+              type === "full"
+                ? "text-amber-400"
+                : type === "half"
+                  ? "text-amber-400"
+                  : "text-surface-300 dark:text-surface-600"
+            }`}
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={interactive ? `${value} star${value !== 1 ? "s" : ""}` : undefined}
+            onKeyDown={interactive ? (e) => { if (e.key === "Enter" || e.key === " ") handleClick(value); } : undefined}
+          >
+            {type === "full" ? (
+              <StarFilled className="w-full h-full" />
+            ) : type === "half" ? (
+              <StarHalf className="w-full h-full" />
+            ) : (
+              <StarOutline className="w-full h-full" />
+            )}
+          </span>
+        );
+      })}
+      <span className={`ml-1 ${textSize} text-surface-500 dark:text-surface-400 tabular-nums font-medium`}>
+        {normalizedRating.toFixed(1)}
+      </span>
+    </div>
+  );
+}
