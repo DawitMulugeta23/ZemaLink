@@ -56,11 +56,12 @@ export default function Library() {
     setLoading(true);
     setError('');
     try {
-      const [likes, playlistsData, hist] = await Promise.all([
+      const promises = [
         songService.getLikes().catch(() => ({ likes: [] })),
-        songService.getPlaylists().catch(() => ({ playlists: [] })),
+        user?.role === 'musician' ? songService.getPlaylists().catch(() => ({ playlists: [] })) : Promise.resolve({ playlists: [] }),
         songService.getListeningHistory().catch(() => []),
-      ]);
+      ];
+      const [likes, playlistsData, hist] = await Promise.all(promises);
       setLikedSongs(likes?.likes || []);
       setPlaylists(playlistsData?.playlists || []);
       setHistory(hist || []);
