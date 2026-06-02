@@ -190,19 +190,21 @@ function Profile() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
+          <div className={`grid gap-3 md:gap-4 mb-6 ${user?.role === 'musician' ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
               <div className="text-2xl font-bold gradient-text">
                 {loadingStats ? "..." : stats.likes}
               </div>
               <div className="text-xs text-slate-400 mt-1">Songs Liked</div>
             </div>
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
-              <div className="text-2xl font-bold gradient-text">
-                {loadingStats ? "..." : stats.playlists}
+            {user?.role === 'musician' && (
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
+                <div className="text-2xl font-bold gradient-text">
+                  {loadingStats ? "..." : stats.playlists}
+                </div>
+                <div className="text-xs text-slate-400 mt-1">Playlists</div>
               </div>
-              <div className="text-xs text-slate-400 mt-1">Playlists</div>
-            </div>
+            )}
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
               <div className="text-2xl font-bold gradient-text">
                 {stats.listeningTime > 0 ? `${Math.round(stats.listeningTime / 60)}h` : "—"}
