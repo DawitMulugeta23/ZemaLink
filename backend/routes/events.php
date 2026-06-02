@@ -142,6 +142,49 @@ switch ($method) {
             'event_id' => (int) $pdo->lastInsertId(),
         ]);
 
+    case 'PUT':
+        $user = $auth->requireApprovedMusician();
+        $eventId = is_numeric($sub) ? (int) $sub : 0;
+
+        if ($eventId <= 0) {
+            api_error('Event ID is required');
+        }
+
+        $stmt = $pdo->prepare("SELECT id FROM events WHERE id = ? AND musician_id = ?");
+        $stmt->execute([$eventId, $user['id']]);
+        if (!$stmt->fetch()) {
+            api_error('Event not found or unauthorized', 404);
+        }
+
+        $input = get_json_input();
+
+        $title = trim($input['title'] ?? '');
+        $description = trim($input['description'] ?? '');
+        $eventDate = trim($input['event_date'] ?? '');
+        $location = trim($input['location'] ?? 'Virtual (Live Stream)');
+        $ticketPrice = (float) ($input['ticket_price'] ?? 0);
+        $totalTickets = (int) ($input['total_tickets'] ?? 100);
+        $isLiveStream = !empty($input['is_live_stream']) ? 1 : 0;
+        $coverImage = $input['cover_image'] ?? null;
+
+        if ($title === '' || $eventDate === '') {
+            api_error('Title and event date are required');
+        }
+
+        $stmt = $pdo->prepare(
+            "UPDATE events SET title = ?, description = ?, event_date = ?, location = ?,
+                              cover_image = ?, ticket_price = ?, total_tickets = ?, is_live_stream = ?
+             WHERE id = ? AND musician_id = ?"
+        );
+        $stmt->execute([$title, $description, $eventDate, $location,
+                        $coverImage, $ticketPrice, $totalTickets, $isLiveStream,
+                        $eventId, $user['id']]);
+
+        api_response([
+            'success' => true,
+            'message' => 'Event updated successfully',
+        ]);
+
     case 'DELETE':
         $user = $auth->requireApprovedMusician();
         $eventId = is_numeric($sub) ? (int) $sub : 0;

@@ -20,6 +20,10 @@ export const eventService = {
     return await api.post("events", formData);
   },
 
+  updateEvent: async (id, data) => {
+    return await api.put(`events/${id}`, data);
+  },
+
   deleteEvent: async (id) => {
     return await api.del(`events/${id}`);
   },
