@@ -48,17 +48,17 @@ function UserMenu() {
         className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-all duration-300"
         aria-label="User menu"
       >
-        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-purple-500/20">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary-600 to-accent-500 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-primary-500/25">
           {user.name?.charAt(0).toUpperCase() || "U"}
         </div>
         <div className="hidden md:block text-left">
           <p className="text-sm font-medium text-white">
             {user.name?.split(" ")[0] || user.name}
           </p>
-          <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+          <p className="text-xs text-surface-400 capitalize">{user.role}</p>
         </div>
         <svg
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-surface-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -74,17 +74,17 @@ function UserMenu() {
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-full mt-2 w-72 bg-[#111119] rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/50 overflow-hidden z-50">
+          <div className="absolute right-0 top-full mt-2 w-72 bg-surface-dark/95 backdrop-blur-xl rounded-2xl border border-surface-700/30 shadow-2xl shadow-black/50 overflow-hidden z-50">
             {/* User Info Header */}
-            <div className="px-4 py-4 border-b border-white/[0.06] bg-gradient-to-r from-purple-500/5 to-transparent">
+            <div className="px-4 py-4 border-b border-surface-700/30 bg-gradient-to-r from-primary-500/5 to-transparent">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-purple-500/20">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-primary-600 to-accent-500 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-primary-500/25">
                   {user.name?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">{user.name}</p>
-                  <p className="text-xs text-slate-400 truncate">{user.email}</p>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 capitalize border border-purple-500/20">
+                  <p className="text-xs text-surface-400 truncate">{user.email}</p>
+                  <span className="badge-primary capitalize">
                     {user.role}
                   </span>
                 </div>
@@ -98,7 +98,7 @@ function UserMenu() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors duration-200 group"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-surface-300 hover:text-white hover:bg-surface-800 transition-colors duration-200 group"
                 >
                   <span className="text-xl w-7 group-hover:scale-110 transition-transform">{item.icon}</span>
                   <span>{item.label}</span>
@@ -107,7 +107,7 @@ function UserMenu() {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-white/[0.06] mx-2"></div>
+            <div className="border-t border-surface-700/30 mx-2"></div>
 
             {/* Logout Button */}
             <button

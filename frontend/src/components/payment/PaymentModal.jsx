@@ -146,7 +146,7 @@ export default function PaymentModal({ isOpen, onClose, amount, itemName, itemTy
             )}
             <button
               onClick={onClose}
-              className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-purple-500/25"
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-primary-500/25"
             >
               Done
             </button>

@@ -38,11 +38,11 @@ function SectionSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="animate-pulse rounded-3xl bg-white/5 border border-white/[0.08] p-4">
-          <div className="aspect-square rounded-2xl bg-white/10 mb-4" />
-          <div className="h-3 bg-white/10 rounded w-3/4 mb-2" />
-          <div className="h-3 bg-white/10 rounded w-1/2 mb-3" />
-          <div className="h-4 bg-white/10 rounded w-full" />
+        <div key={i} className="animate-pulse rounded-2xl bg-surface-200 dark:bg-surface-800/50 p-4">
+          <div className="aspect-square rounded-xl bg-surface-300 dark:bg-surface-700 mb-4" />
+          <div className="h-3 bg-surface-300 dark:bg-surface-700 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-surface-300 dark:bg-surface-700 rounded w-1/2 mb-3" />
+          <div className="h-4 bg-surface-300 dark:bg-surface-700 rounded w-full" />
         </div>
       ))}
     </div>
@@ -53,10 +53,10 @@ function SkeletonRow() {
   return (
     <div className="flex gap-4 overflow-hidden">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="animate-pulse shrink-0 w-44 rounded-3xl bg-white/5 border border-white/[0.08] p-4">
-          <div className="aspect-square rounded-2xl bg-white/10 mb-4" />
-          <div className="h-3 bg-white/10 rounded w-3/4 mb-2" />
-          <div className="h-3 bg-white/10 rounded w-1/2" />
+        <div key={i} className="animate-pulse shrink-0 w-44 rounded-2xl bg-surface-200 dark:bg-surface-800/50 p-4">
+          <div className="aspect-square rounded-xl bg-surface-300 dark:bg-surface-700 mb-4" />
+          <div className="h-3 bg-surface-300 dark:bg-surface-700 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-surface-300 dark:bg-surface-700 rounded w-1/2" />
         </div>
       ))}
     </div>
@@ -65,10 +65,12 @@ function SkeletonRow() {
 
 function SectionHeader({ title, action }) {
   return (
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-2xl font-bold text-white">{title}</h2>
+    <div className="section-header">
+      <div>
+        <h2 className="section-title">{title}</h2>
+      </div>
       {action && (
-        <Link to={action.to} className="text-sm text-primary-400 hover:text-primary-300 font-medium transition">
+        <Link to={action.to} className="btn-ghost text-sm">
           {action.label} &rarr;
         </Link>
       )}
@@ -95,7 +97,7 @@ function SongGrid({ songs, loading, emptyMessage }) {
   if (!songs?.length) {
     return (
       <div className="glass-dark rounded-2xl p-12 text-center">
-        <p className="text-slate-400">{emptyMessage || 'No songs available yet.'}</p>
+        <p className="text-surface-400">{emptyMessage || 'No songs available yet.'}</p>
       </div>
     );
   }
@@ -124,11 +126,8 @@ export default function Home() {
       try {
         const [f, t, r, n] = await Promise.all([
           songService.getFeatured().catch(() => []),
-
           songService.getTrending().catch(() => []),
-
           songService.getTopRated().catch(() => []),
-
           songService.getNewReleases().catch(() => []),
         ]);
         if (cancelled) return;
@@ -150,8 +149,8 @@ export default function Home() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
         <div className="text-5xl">⚠️</div>
-        <p className="text-slate-400 text-center max-w-md">{error}</p>
-        <button onClick={() => window.location.reload()} className="btn-primary px-6 py-2 rounded-full bg-primary-500 hover:bg-primary-600 text-white font-medium transition">
+        <p className="text-surface-400 text-center max-w-md">{error}</p>
+        <button onClick={() => window.location.reload()} className="btn-primary">
           Try Again
         </button>
       </div>
@@ -161,19 +160,20 @@ export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-10 pb-8 md:pb-12 text-center md:text-left">
+      <AnimatedSection className="relative overflow-hidden rounded-[2rem] mb-12 pb-8 md:pb-12 text-center md:text-left">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/30 via-primary-400/20 to-accent-500/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-gradient-to-tr from-accent-500/20 to-primary-400/10 blur-3xl" />
+          <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/30 via-primary-400/20 to-accent-500/10 blur-3xl animate-float-slow" />
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-gradient-to-tr from-accent-500/20 to-primary-400/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
         </div>
         <div className="relative">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-4 font-semibold">
-            Welcome to the future of music
-          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-xs font-semibold uppercase tracking-wider mb-6 animate-fade-in">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+           
+          </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-6 bg-gradient-to-r from-primary-400 via-primary-500 to-accent-500 bg-clip-text text-transparent leading-tight">
             {user ? `Welcome back, ${user.name}` : 'Welcome to ZemaLink'}
           </h1>
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed">
+          <p className="text-lg md:text-xl text-surface-400 max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed">
             {user
               ? 'Your music, your way. Pick up where you left off and dive into your personalized feed.'
               : 'Discover, stream, and share music from independent artists worldwide. High-fidelity audio, zero compromises.'}
@@ -181,21 +181,21 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center md:justify-start gap-4 justify-center">
             {user ? (
               <>
-                <button onClick={() => navigate('/browse')} className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary-500/25">
+                <button onClick={() => navigate('/browse')} className="btn-primary !px-8 !py-4 !text-lg group">
                   Browse Music
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </button>
-                <button onClick={() => navigate('/library')} className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold text-lg hover:bg-white/5 transition">
+                <button onClick={() => navigate('/library')} className="btn-secondary !px-8 !py-4 !text-lg">
                   Your Library
                 </button>
               </>
             ) : (
               <>
-                <button onClick={() => navigate('/register')} className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary-500/25">
+                <button onClick={() => navigate('/register')} className="btn-primary !px-8 !py-4 !text-lg group">
                   Get Started Free
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </button>
-                <button onClick={() => navigate('/browse')} className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold text-lg hover:bg-white/5 transition">
+                <button onClick={() => navigate('/browse')} className="btn-secondary !px-8 !py-4 !text-lg">
                   Browse Music
                 </button>
               </>
@@ -214,9 +214,9 @@ export default function Home() {
               { label: 'Monthly Users', value: '10K+' },
               { label: 'Uptime', value: '99.9%' },
             ].map((stat, i) => (
-              <div key={i} className="glass-dark rounded-2xl p-6 text-center hover:border-primary-500/30 transition border border-white/10">
+              <div key={i} className="glass-card rounded-2xl p-6 text-center border border-surface-200 dark:border-surface-700/40">
                 <div className="text-3xl font-bold gradient-text mb-1">{stat.value}</div>
-                <div className="text-sm text-slate-400 font-medium">{stat.label}</div>
+                <div className="text-sm text-surface-500 dark:text-surface-400 font-medium">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -255,7 +255,7 @@ export default function Home() {
             <div className="relative glass-dark rounded-[2rem] border border-primary-500/20 p-8 md:p-12 text-center">
               <div className="text-5xl mb-4">💎</div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Go Premium</h2>
-              <p className="text-slate-400 max-w-xl mx-auto mb-8">
+              <p className="text-surface-400 max-w-xl mx-auto mb-8">
                 Unlock high-quality audio, offline listening, and exclusive content. Support the artists you love.
               </p>
               <button onClick={() => navigate('/subscription')} className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-amber-500/25">
@@ -269,17 +269,17 @@ export default function Home() {
       {/* CTA for Musicians */}
       {!user && (
         <AnimatedSection className="mb-16">
-          <div className="glass-dark rounded-[2rem] border border-white/10 p-8 md:p-12 text-center">
+          <div className="glass-card rounded-[2rem] p-8 md:p-12 text-center">
             <div className="text-5xl mb-4">🎤</div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Share Your Music</h2>
-            <p className="text-slate-400 max-w-xl mx-auto mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-surface-900 dark:text-white mb-4">Share Your Music</h2>
+            <p className="text-surface-500 dark:text-surface-400 max-w-xl mx-auto mb-8">
               Are you a musician? Upload your tracks, connect with listeners, and grow your audience on ZemaLink.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button onClick={() => navigate('/register?role=musician')} className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold transition-all duration-300 hover:scale-105">
+              <button onClick={() => navigate('/register?role=musician')} className="btn-primary !px-8 !py-4 group">
                 Join as Musician &rarr;
               </button>
-              <button onClick={() => navigate('/browse')} className="px-8 py-4 rounded-full border border-white/20 text-white font-bold hover:bg-white/5 transition">
+              <button onClick={() => navigate('/browse')} className="btn-secondary !px-8 !py-4">
                 Explore Music
               </button>
             </div>

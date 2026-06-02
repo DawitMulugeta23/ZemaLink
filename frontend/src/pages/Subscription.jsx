@@ -25,7 +25,7 @@ const PLANS = [
     price: "$5.99",
     period: "/month",
     save: null,
-    gradient: "from-purple-500 to-cyan-500",
+    gradient: "from-primary-500 to-accent-500",
     features: [
       "High quality audio (320kbps)",
       "Unlimited skips",
@@ -130,7 +130,7 @@ function Subscription() {
   return (
     <div className="max-w-6xl mx-auto pb-4">
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl md:text-4xl font-black gradient-text">
           Choose Your Plan
         </h1>
         <p className="text-slate-400 text-sm mt-2 max-w-xl mx-auto">
@@ -160,11 +160,11 @@ function Subscription() {
                   ? "border-emerald-500/40 bg-emerald-500/5 shadow-lg shadow-emerald-500/10"
                   : isSelected
                   ? "border-purple-500/40 bg-[#1a1a2e] shadow-lg shadow-purple-500/10"
-                  : "border-white/[0.08] bg-[#13131f] hover:border-white/20"
+                  : "glass-dark border-white/[0.08] hover:border-white/20"
               }`}
             >
               {plan.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
                   Most Popular
                 </div>
               )}
@@ -208,7 +208,7 @@ function Subscription() {
                   onClick={() => { setSelectedPlan(plan.id); setShowConfirm(true); }}
                   className={`w-full rounded-xl py-3 text-sm font-bold transition-all duration-300 ${
                     isSelected
-                      ? "bg-gradient-to-r from-purple-600 to-cyan-500 text-white hover:opacity-90 shadow-lg shadow-purple-500/20"
+                      ? "bg-gradient-to-r from-primary-600 to-accent-500 text-white hover:opacity-90 shadow-lg shadow-primary-500/25"
                       : "bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                   }`}
                 >
@@ -222,7 +222,7 @@ function Subscription() {
 
       <div className="mt-12 max-w-3xl mx-auto">
         <h3 className="text-lg font-bold text-white mb-4 text-center">Feature Comparison</h3>
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden">
+        <div className="rounded-3xl glass-dark overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/[0.06]">
@@ -256,7 +256,7 @@ function Subscription() {
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-white/[0.08] bg-[#13131f] p-8 shadow-2xl">
+          <div className="w-full max-w-md rounded-3xl glass-dark p-8 shadow-2xl">
             <div className="text-center mb-6">
               <div className="text-5xl mb-4">{selectedPlan === "monthly" ? "⭐" : "👑"}</div>
               <h2 className="text-2xl font-bold text-white mb-1">

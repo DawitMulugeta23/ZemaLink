@@ -15,8 +15,8 @@ define('GENRES', [
     'Latin', 'Afrobeat', 'Gospel', 'K-Pop', 'World', 'Trap', 'Drill'
 ]);
 
-define('ALLOWED_AUDIO_EXTENSIONS', ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac']);
-define('ALLOWED_VIDEO_EXTENSIONS', ['mp4', 'webm', 'mov', 'avi', 'mkv']);
+define('ALLOWED_AUDIO_EXTENSIONS', ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'opus', 'amr', 'mid', 'midi', 'caf', 'ac3', 'ra', 'aiff', '3gp']);
+define('ALLOWED_VIDEO_EXTENSIONS', ['mp4', 'webm', 'mov', 'avi', 'mkv', '3gp', '3g2', 'mts', 'm2ts', 'ts', 'mxf', 'ogv', 'wmv', 'asf', 'flv', 'vob', 'm4v', 'f4v', 'mpg', 'mpeg']);
 define('ALLOWED_IMAGE_EXTENSIONS', ['jpg', 'jpeg', 'png', 'webp', 'gif']);
 
 define('MAX_AUDIO_SIZE', 52428800);

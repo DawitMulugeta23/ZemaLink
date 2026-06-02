@@ -90,41 +90,36 @@ export default function Register() {
     }
   };
 
-  const togglePassword = () => setShowPassword((p) => !p);
-  const toggleConfirmPassword = () => setShowConfirmPassword((p) => !p);
-
   const inputClass = (field) =>
-    `w-full bg-white/5 border rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 focus:outline-none focus:ring-1 transition ${
-      validationErrors[field]
-        ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/30'
-        : 'border-white/10 focus:border-primary-500 focus:ring-primary-500/50'
+    `input-field pr-12 ${
+      validationErrors[field] ? 'input-field-error' : ''
     }`;
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8 px-4">
-      <div className="w-full max-w-md">
-        <div className="glass-dark rounded-2xl border border-white/10 p-8 shadow-2xl">
+      <div className="w-full max-w-md animate-scale-in">
+        <div className="glass-card rounded-2xl p-8 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-glow">
               <span className="text-4xl">🎵</span>
             </div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-bold gradient-text">
               Create Account
             </h2>
-            <p className="text-slate-400 text-sm mt-2">
+            <p className="text-surface-500 dark:text-surface-400 text-sm mt-2">
               {adminMode ? 'Set up the first administrator account' : 'Join ZemaLink Music Platform'}
             </p>
           </div>
 
           {/* Error / Success */}
           {error && (
-            <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm text-center">
+            <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-6 p-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-300 text-sm text-center">
+            <div className="mb-6 p-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center">
               {success}
             </div>
           )}
@@ -143,7 +138,7 @@ export default function Register() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Full Name</label>
+              <label className="input-label">Full Name</label>
               <input
                 type="text"
                 name="name"
@@ -158,7 +153,7 @@ export default function Register() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Email Address</label>
+              <label className="input-label">Email Address</label>
               <input
                 type="email"
                 name="email"
@@ -174,7 +169,7 @@ export default function Register() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Password</label>
+              <label className="input-label">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -186,7 +181,7 @@ export default function Register() {
                   required
                   autoComplete="new-password"
                 />
-                <button type="button" onClick={togglePassword} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition" tabIndex={-1}>
+                <button type="button" onClick={() => setShowPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300 transition" tabIndex={-1}>
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -204,7 +199,7 @@ export default function Register() {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Confirm Password</label>
+              <label className="input-label">Confirm Password</label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -216,7 +211,7 @@ export default function Register() {
                   required
                   autoComplete="new-password"
                 />
-                <button type="button" onClick={toggleConfirmPassword} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition" tabIndex={-1}>
+                <button type="button" onClick={() => setShowConfirmPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300 transition" tabIndex={-1}>
                   {showConfirmPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -243,7 +238,7 @@ export default function Register() {
               </div>
             ) : (
               <div>
-                <label className="block text-sm text-slate-400 mb-3">I want to join as:</label>
+                <label className="input-label">I want to join as:</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -251,12 +246,12 @@ export default function Register() {
                     className={`p-4 rounded-xl border-2 transition-all duration-300 ${
                       formData.role === 'audience'
                         ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/10 scale-105'
-                        : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        : 'border-surface-300 dark:border-surface-600 bg-surface-100/50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800'
                     }`}
                   >
                     <div className="text-3xl mb-2">🎧</div>
-                    <div className="font-semibold text-sm text-white">Listener</div>
-                    <div className="text-xs text-slate-500 mt-1">Listen to music</div>
+                    <div className="font-semibold text-sm text-surface-900 dark:text-white">Listener</div>
+                    <div className="text-xs text-surface-500 mt-1">Listen to music</div>
                   </button>
                   <button
                     type="button"
@@ -264,12 +259,12 @@ export default function Register() {
                     className={`p-4 rounded-xl border-2 transition-all duration-300 ${
                       formData.role === 'musician'
                         ? 'border-accent-500 bg-accent-500/10 shadow-lg shadow-accent-500/10 scale-105'
-                        : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        : 'border-surface-300 dark:border-surface-600 bg-surface-100/50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800'
                     }`}
                   >
                     <div className="text-3xl mb-2">🎤</div>
-                    <div className="font-semibold text-sm text-white">Musician</div>
-                    <div className="text-xs text-slate-500 mt-1">Upload your music</div>
+                    <div className="font-semibold text-sm text-surface-900 dark:text-white">Musician</div>
+                    <div className="text-xs text-surface-500 mt-1">Upload your music</div>
                   </button>
                 </div>
               </div>
@@ -277,7 +272,7 @@ export default function Register() {
 
             {!adminMode && formData.role === 'musician' && (
               <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                <p className="text-xs text-blue-300 text-center">Musician accounts require admin approval. You&apos;ll be notified once approved.</p>
+                <p className="text-xs text-blue-400 text-center">Musician accounts require admin approval. You&apos;ll be notified once approved.</p>
               </div>
             )}
 
@@ -285,7 +280,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="btn-primary w-full !py-3"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -300,7 +295,7 @@ export default function Register() {
 
           {/* Login link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-surface-500">
               Already have an account?{' '}
               <Link to="/login" className="text-primary-400 hover:text-primary-300 font-semibold transition">
                 Sign In

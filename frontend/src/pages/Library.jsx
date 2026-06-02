@@ -27,10 +27,10 @@ function TabSkeleton() {
 
 function EmptyState({ icon, title, message, action }) {
   return (
-    <div className="glass-dark rounded-2xl p-12 md:p-16 text-center border border-white/10">
+    <div className="glass-card rounded-2xl p-12 md:p-16 text-center border border-white/10">
       <div className="text-6xl mb-4">{icon}</div>
       <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-      <p className="text-slate-400 mb-6 max-w-md mx-auto">{message}</p>
+      <p className="text-surface-400 mb-6 max-w-md mx-auto">{message}</p>
       {action && (
         <Link to={action.to} className="inline-flex px-6 py-2.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-medium hover:scale-105 transition">
           {action.label}
@@ -118,9 +118,9 @@ export default function Library() {
 
   if (error) {
     return (
-      <div className="glass-dark rounded-2xl p-12 text-center border border-white/10">
+      <div className="glass-card rounded-2xl p-12 text-center border border-white/10">
         <div className="text-4xl mb-3">⚠️</div>
-        <p className="text-slate-400 mb-4">{error}</p>
+        <p className="text-surface-400 mb-4">{error}</p>
         <button onClick={loadLibrary} className="px-6 py-2 rounded-full bg-primary-500 text-white font-medium hover:bg-primary-600 transition">
           Retry
         </button>
@@ -141,7 +141,7 @@ export default function Library() {
             className={`relative px-5 py-3 text-sm font-medium transition ${
               activeTab === tab.id
                 ? 'text-white'
-                : 'text-slate-500 hover:text-slate-300'
+                : 'text-surface-500 hover:text-surface-300'
             }`}
           >
             {tab.icon} {tab.label}
@@ -152,7 +152,7 @@ export default function Library() {
         ))}
         <Link
           to="/purchased"
-          className="px-5 py-3 text-sm font-medium text-slate-500 hover:text-slate-300 transition ml-auto"
+          className="px-5 py-3 text-sm font-medium text-surface-500 hover:text-surface-300 transition ml-auto"
         >
           💎 Purchased
         </Link>
@@ -173,7 +173,7 @@ export default function Library() {
           ) : (
             <>
               <div className="flex items-center justify-between mb-6">
-                <p className="text-sm text-slate-400">{likedSongs.length} song{likedSongs.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-surface-400">{likedSongs.length} song{likedSongs.length !== 1 ? 's' : ''}</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 {likedSongs.map((song) => (
@@ -201,7 +201,7 @@ export default function Library() {
             <TabSkeleton />
           ) : (
             <div className="flex items-center justify-between mb-6">
-              <p className="text-sm text-slate-400">{playlists.length} playlist{playlists.length !== 1 ? 's' : ''}</p>
+              <p className="text-sm text-surface-400">{playlists.length} playlist{playlists.length !== 1 ? 's' : ''}</p>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-5 py-2.5 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 text-white text-sm font-medium hover:scale-105 transition"
@@ -245,14 +245,14 @@ export default function Library() {
           ) : (
             <>
               <div className="flex items-center justify-between mb-6">
-                <p className="text-sm text-slate-400">{history.length} song{history.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-surface-400">{history.length} song{history.length !== 1 ? 's' : ''}</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 {history.map((song, i) => (
                   <div key={`${song.id}-${i}`} className="relative">
                     <SongCard song={song} />
                     {song.played_at && (
-                      <p className="text-[10px] text-slate-500 mt-1 text-center">
+                      <p className="text-[10px] text-surface-500 mt-1 text-center">
                         {new Date(song.played_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
@@ -269,24 +269,24 @@ export default function Library() {
         <>
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={() => setShowCreateModal(false)} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 p-4">
-            <div className="glass-dark rounded-2xl border border-white/10 p-6 shadow-2xl">
+            <div className="glass-card rounded-2xl border border-white/10 p-6 shadow-2xl">
               <h2 className="text-xl font-bold text-white mb-6">Create New Playlist</h2>
               <form onSubmit={handleCreatePlaylist}>
                 <div className="mb-6">
-                  <label htmlFor="playlistName" className="block text-sm text-slate-400 mb-2">Playlist Name</label>
+                  <label htmlFor="playlistName" className="block text-sm text-surface-400 mb-2">Playlist Name</label>
                   <input
                     type="text"
                     id="playlistName"
                     value={playlistName}
                     onChange={(e) => setPlaylistName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 transition"
+                    className="input-field"
                     placeholder="My awesome playlist"
                     required
                     autoFocus
                   />
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white transition">
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-surface-400 hover:text-white transition">
                     Cancel
                   </button>
                   <button

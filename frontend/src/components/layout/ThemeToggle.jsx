@@ -8,8 +8,8 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       className={`relative inline-flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300 group ${
         theme === 'dark'
-          ? 'bg-slate-800 border border-white/10 hover:bg-slate-700'
-          : 'bg-slate-100 border border-slate-200 hover:bg-slate-200'
+          ? 'bg-surface-800 border border-surface-700/50 hover:bg-surface-700'
+          : 'bg-surface-100 border border-surface-200 hover:bg-surface-200'
       }`}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >

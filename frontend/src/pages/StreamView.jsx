@@ -255,14 +255,14 @@ function StreamView() {
 
   if (!hasAccess) {
     return (
-      <div className="max-w-md mx-auto my-12 p-8 rounded-3xl border border-white/[0.08] bg-[#13131f] text-center">
+      <div className="max-w-md mx-auto my-12 p-8 rounded-3xl glass-dark text-center">
         <div className="text-6xl">🔒</div>
         <h2 className="text-2xl font-black mt-4 text-white">Ticket Required</h2>
         <p className="text-sm text-slate-400 mt-2">
           This live stream requires a concert ticket. Purchase one from the Events page.
         </p>
         <div className="mt-8 flex flex-col gap-3">
-          <Link to="/events" className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-2xl py-3.5 text-sm font-bold shadow-lg hover:shadow-red-500/25 active:scale-95 transition">
+          <Link to="/events" className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-2xl py-3.5 text-sm font-bold shadow-lg hover:shadow-primary-500/25 active:scale-95 transition">
             Buy Concert Ticket
           </Link>
           <Link to="/live-streams" className="w-full bg-white/5 text-white rounded-2xl py-3.5 text-sm font-bold hover:bg-white/10 active:scale-95 transition border border-white/10">
@@ -306,7 +306,7 @@ function StreamView() {
                     <button
                       type="button"
                       onClick={handleStartStream}
-                      className="bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl py-2 px-6 text-xs font-bold shadow-lg hover:shadow-red-500/20 active:scale-95 transition"
+                      className="bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl py-2 px-6 text-xs font-bold shadow-lg hover:shadow-primary-500/25 active:scale-95 transition"
                     >
                       Start Stream & Go LIVE
                     </button>
@@ -339,7 +339,7 @@ function StreamView() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-10">
                       <div className="w-24 h-24 mx-auto rounded-full bg-red-500/25 animate-ping absolute inset-0" />
-                      <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center shadow-lg relative">
+                      <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg relative">
                         <span className="text-3xl">🎤</span>
                       </div>
                       <span className="text-xs uppercase tracking-widest text-white/50 block mt-4 font-semibold">
@@ -361,7 +361,7 @@ function StreamView() {
             )}
           </div>
 
-          <div className="mt-4 p-5 rounded-3xl border border-white/[0.08] bg-[#13131f]">
+          <div className="mt-4 p-5 rounded-3xl glass-dark">
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">
@@ -385,7 +385,7 @@ function StreamView() {
           </div>
         </div>
 
-        <div className="flex flex-col h-[500px] lg:h-auto rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden">
+        <div className="flex flex-col h-[500px] lg:h-auto rounded-3xl glass-dark overflow-hidden">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
               <span className="text-red-500 text-base">💬</span>
@@ -443,7 +443,7 @@ function StreamView() {
             />
             <button
               type="submit"
-              className="bg-gradient-to-r from-red-500 to-pink-500 hover:shadow-lg text-white font-bold text-xs p-2.5 rounded-xl transition active:scale-95 flex items-center justify-center aspect-square"
+              className="bg-gradient-to-r from-primary-500 to-accent-500 hover:shadow-lg text-white font-bold text-xs p-2.5 rounded-xl transition active:scale-95 flex items-center justify-center aspect-square"
               aria-label="Send Message"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>

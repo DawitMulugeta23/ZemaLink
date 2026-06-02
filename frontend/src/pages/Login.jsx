@@ -72,22 +72,22 @@ export default function Login() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8 px-4">
-      <div className="w-full max-w-md">
-        <div className="glass-dark rounded-2xl border border-white/10 p-8 shadow-2xl">
+      <div className="w-full max-w-md animate-scale-in">
+        <div className="glass-card rounded-2xl p-8 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-glow">
               <span className="text-4xl">🎵</span>
             </div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-bold gradient-text">
               Welcome Back
             </h2>
-            <p className="text-slate-400 text-sm mt-2">Sign in to continue to ZemaLink</p>
+            <p className="text-surface-500 dark:text-surface-400 text-sm mt-2">Sign in to continue to ZemaLink</p>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm text-center">
+            <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
               {error}
             </div>
           )}
@@ -104,15 +104,15 @@ export default function Login() {
 
           {/* Demo Accounts */}
           <div className="mb-6">
-            <p className="text-xs text-slate-500 text-center mb-2">
-              Quick login (password: <span className="text-slate-300 font-mono">password</span>):
+            <p className="text-xs text-surface-500 text-center mb-2">
+              Quick login (password: <span className="text-surface-300 font-mono">password</span>):
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {DEMO_ACCOUNTS.map((acc, i) => (
                 <button
                   key={i}
                   onClick={() => fillCredentials(acc.email, acc.password)}
-                  className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400 hover:bg-white/10 hover:text-white transition flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-full bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-xs text-surface-500 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 hover:text-surface-700 dark:hover:text-surface-200 transition flex items-center gap-1"
                 >
                   <span>{acc.icon}</span>
                   <span>{acc.role}</span>
@@ -124,34 +124,34 @@ export default function Login() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Email Address</label>
+              <label className="input-label">Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                className="input-field"
                 required
                 autoComplete="email"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-slate-400 mb-2">Password</label>
+              <label className="input-label">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition"
+                  className="input-field pr-12"
                   required
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition text-lg"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300 transition text-lg"
                   tabIndex={-1}
                 >
                   {showPassword ? '🙈' : '👁️'}
@@ -160,7 +160,7 @@ export default function Login() {
             </div>
 
             <div className="flex items-center justify-end">
-              <button type="button" className="text-xs text-slate-500 hover:text-primary-400 transition">
+              <button type="button" className="text-xs text-surface-500 hover:text-primary-400 transition font-medium">
                 Forgot password?
               </button>
             </div>
@@ -168,7 +168,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="btn-primary w-full !py-3"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -183,7 +183,7 @@ export default function Login() {
 
           {/* Register link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-surface-500">
               Don&apos;t have an account?{' '}
               <Link to="/register" className="text-primary-400 hover:text-primary-300 font-semibold transition">
                 Create Account

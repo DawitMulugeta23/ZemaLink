@@ -278,8 +278,26 @@ function handleApproveMusician(PDO $pdo): void
         api_error('User ID is required');
     }
 
-    $pdo->prepare("UPDATE users SET is_approved = 1 WHERE id = ? AND role = 'musician'")
-        ->execute([$userId]);
+    $stmt = $pdo->prepare("UPDATE users SET is_approved = 1 WHERE id = ? AND role = 'musician' AND is_approved = 0");
+    $stmt->execute([$userId]);
+
+    if ($stmt->rowCount() === 0) {
+        $check = $pdo->prepare("SELECT id, role, is_approved FROM users WHERE id = ?");
+        $check->execute([$userId]);
+        $user = $check->fetch();
+
+        if (!$user) {
+            api_error('User not found');
+        }
+        if ($user['role'] !== 'musician') {
+            api_error('User is not a musician');
+        }
+        if ($user['is_approved'] == 1) {
+            api_error('Musician is already approved');
+        }
+        api_error('Could not approve musician');
+    }
+
     api_response(['success' => true, 'message' => 'Musician approved']);
 }
 
@@ -291,8 +309,26 @@ function handleRejectMusician(PDO $pdo): void
         api_error('User ID is required');
     }
 
-    $pdo->prepare("UPDATE users SET role = 'audience', is_approved = 1 WHERE id = ? AND role = 'musician' AND is_approved = 0")
-        ->execute([$userId]);
+    $stmt = $pdo->prepare("UPDATE users SET role = 'audience', is_approved = 1 WHERE id = ? AND role = 'musician' AND is_approved = 0");
+    $stmt->execute([$userId]);
+
+    if ($stmt->rowCount() === 0) {
+        $check = $pdo->prepare("SELECT id, role, is_approved FROM users WHERE id = ?");
+        $check->execute([$userId]);
+        $user = $check->fetch();
+
+        if (!$user) {
+            api_error('User not found');
+        }
+        if ($user['role'] !== 'musician') {
+            api_error('User is not a musician');
+        }
+        if ($user['is_approved'] == 1) {
+            api_error('Musician is already approved');
+        }
+        api_error('Could not reject musician');
+    }
+
     api_response(['success' => true, 'message' => 'Musician registration rejected']);
 }
 

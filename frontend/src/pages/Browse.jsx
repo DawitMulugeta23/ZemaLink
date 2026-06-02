@@ -20,7 +20,7 @@ function GridSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
       {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
-        <div key={i} className="animate-pulse rounded-3xl bg-white/5 border border-white/[0.08] p-4">
+        <div key={i} className="skeleton p-4">
           <div className="aspect-square rounded-2xl bg-white/10 mb-4" />
           <div className="h-3 bg-white/10 rounded w-3/4 mb-2" />
           <div className="h-3 bg-white/10 rounded w-1/2 mb-3" />
@@ -148,7 +148,7 @@ export default function Browse() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by song, artist, album..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 transition"
+               className="input-field !pl-10"
             />
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -170,7 +170,7 @@ export default function Browse() {
                 className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
                   selectedGenre === genre
                     ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
-                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10'
+                    : 'btn-ghost'
                 }`}
               >
                 {genre}

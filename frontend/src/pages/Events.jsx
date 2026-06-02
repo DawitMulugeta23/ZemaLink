@@ -100,7 +100,7 @@ function Events() {
     <div className="max-w-7xl mx-auto pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-extrabold gradient-text">
             Events & Concerts
           </h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -113,7 +113,7 @@ function Events() {
               onClick={() => setActiveTab("all-events")}
               className={`px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                 activeTab === "all-events"
-                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/25"
+                  ? "bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -123,7 +123,7 @@ function Events() {
               onClick={() => setActiveTab("my-tickets")}
               className={`px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                 activeTab === "my-tickets"
-                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/25"
+                  ? "bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -164,7 +164,7 @@ function Events() {
         </div>
       ) : activeTab === "all-events" ? (
         filteredEvents.length === 0 ? (
-          <div className="text-center py-20 rounded-3xl border border-white/[0.08] bg-[#13131f]">
+          <div className="text-center py-20 rounded-3xl glass-dark">
             <div className="text-5xl mb-4">🎫</div>
             <h3 className="text-xl font-bold text-white mt-4">
               {timeFilter === "upcoming" ? "No upcoming events" : "No past events"}
@@ -183,7 +183,7 @@ function Events() {
               return (
                 <div
                   key={ev.id}
-                  className="group relative flex flex-col rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden transition-all duration-300 hover:-translate-y-1 shadow-lg hover:border-red-500/30 hover:shadow-red-500/10"
+                  className="group relative flex flex-col rounded-3xl glass-dark overflow-hidden transition-all duration-300 hover:-translate-y-1 shadow-lg hover:border-red-500/30 hover:shadow-red-500/10"
                 >
                   <div className="relative aspect-[16/9] w-full overflow-hidden bg-black/30">
                     <img
@@ -241,10 +241,10 @@ function Events() {
                               ? "bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10"
                               : isSoldOut
                               ? "bg-white/5 text-slate-500 cursor-not-allowed"
-                              : "bg-gradient-to-r from-red-500 to-pink-500 text-white hover:shadow-lg hover:shadow-red-500/25"
-                          }`}
-                        >
-                          {hasTicket ? "View Ticket" : isSoldOut ? "Sold Out" : "Buy Ticket"}
+: "bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:shadow-lg hover:shadow-primary-500/25"
+                        }`}
+                      >
+                        {hasTicket ? "View Ticket" : isSoldOut ? "Sold Out" : "Buy Ticket"}
                         </button>
                       )}
                     </div>
@@ -256,7 +256,7 @@ function Events() {
         )
       ) : (
         myTickets.length === 0 ? (
-          <div className="text-center py-20 rounded-3xl border border-white/[0.08] bg-[#13131f]">
+          <div className="text-center py-20 rounded-3xl glass-dark">
             <div className="text-5xl mb-4">🎟️</div>
             <h3 className="text-xl font-bold text-white mt-4">No purchased tickets</h3>
             <p className="text-slate-400 text-sm mt-2">Tickets you buy for upcoming events will appear here</p>
@@ -266,7 +266,7 @@ function Events() {
             {myTickets.map((tkt) => (
               <div
                 key={tkt.id}
-                className="relative flex flex-col sm:flex-row rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden shadow-xl"
+                className="relative flex flex-col sm:flex-row rounded-3xl glass-dark overflow-hidden shadow-xl"
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -322,7 +322,7 @@ function Events() {
 
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg rounded-3xl border border-white/[0.08] bg-[#13131f] p-6 overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="relative w-full max-w-lg rounded-3xl glass-dark p-6 overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
             <button
               onClick={() => setSelectedEvent(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-white/5 w-8 h-8 rounded-full flex items-center justify-center border border-white/10"
@@ -394,10 +394,10 @@ function Events() {
                     className={`rounded-2xl py-3.5 text-sm font-bold active:scale-95 transition-all duration-300 disabled:opacity-50 ${
                       parseFloat(selectedEvent.ticket_price) === 0
                         ? "bg-white/5 text-slate-500 cursor-not-allowed border border-white/10"
-                        : "bg-gradient-to-r from-red-500 to-pink-500 text-white hover:shadow-lg hover:shadow-red-500/25"
-                    }`}
-                  >
-                    {buying ? "Processing..." : "Pay with Chapa"}
+                        : "bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:shadow-lg hover:shadow-primary-500/25"
+                      }`}
+                    >
+                      {buying ? "Processing..." : "Pay with Chapa"}
                   </button>
                 </div>
               )}

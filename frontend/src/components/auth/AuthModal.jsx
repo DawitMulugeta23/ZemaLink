@@ -82,7 +82,7 @@ export default function AuthModal({ onClose }) {
           className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           aria-label="Close modal"
         >
-          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -94,10 +94,10 @@ export default function AuthModal({ onClose }) {
             </div>
           </div>
 
-          <h2 className={`text-2xl font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h2 className={`text-2xl font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-surface-900'}`}>
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h2>
-          <p className={`text-sm text-center mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-sm text-center mb-6 ${isDark ? 'text-surface-400' : 'text-surface-500'}`}>
             {isLogin ? 'Sign in to continue to ZemaLink' : 'Join ZemaLink and start listening'}
           </p>
 
@@ -106,8 +106,8 @@ export default function AuthModal({ onClose }) {
               onClick={() => switchTab(true)}
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
                 isLogin
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                  : `${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`
+                  ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25'
+                  : `${isDark ? 'text-surface-400 hover:text-white' : 'text-surface-500 hover:text-surface-900'}`
               }`}
             >
               Sign In
@@ -116,8 +116,8 @@ export default function AuthModal({ onClose }) {
               onClick={() => switchTab(false)}
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
                 !isLogin
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
-                  : `${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`
+                  ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25'
+                  : `${isDark ? 'text-surface-400 hover:text-white' : 'text-surface-500 hover:text-surface-900'}`
               }`}
             >
               Register
@@ -143,7 +143,7 @@ export default function AuthModal({ onClose }) {
                 className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
                   isDark
                     ? 'bg-slate-800/50 border-white/10 text-white placeholder-slate-500'
-                    : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                    : 'bg-slate-50 border-slate-200 text-surface-900 placeholder-slate-400'
                 }`}
                 required
               />
@@ -157,7 +157,7 @@ export default function AuthModal({ onClose }) {
               className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
                 isDark
                   ? 'bg-slate-800/50 border-white/10 text-white placeholder-slate-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                  : 'bg-slate-50 border-slate-200 text-surface-900 placeholder-slate-400'
               }`}
               required
             />
@@ -170,7 +170,7 @@ export default function AuthModal({ onClose }) {
               className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
                 isDark
                   ? 'bg-slate-800/50 border-white/10 text-white placeholder-slate-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                  : 'bg-slate-50 border-slate-200 text-surface-900 placeholder-slate-400'
               }`}
               required
             />
@@ -184,7 +184,7 @@ export default function AuthModal({ onClose }) {
                 className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
                   isDark
                     ? 'bg-slate-800/50 border-white/10 text-white placeholder-slate-500'
-                    : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                    : 'bg-slate-50 border-slate-200 text-surface-900 placeholder-slate-400'
                 }`}
                 required
               />
@@ -192,7 +192,7 @@ export default function AuthModal({ onClose }) {
 
             {!isLogin && (
               <div>
-                <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-surface-400' : 'text-surface-500'}`}>
                   I want to join as
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -204,7 +204,7 @@ export default function AuthModal({ onClose }) {
                       className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 ${
                         role === r.value
                           ? 'border-purple-500 bg-purple-500/10 text-purple-400 shadow-lg shadow-purple-500/10'
-                          : `${isDark ? 'border-white/10 text-slate-400 hover:border-white/20 hover:text-white' : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`
+                          : `${isDark ? 'border-white/10 text-surface-400 hover:border-white/20 hover:text-white' : 'border-slate-200 text-surface-500 hover:border-slate-300 hover:text-surface-700'}`
                       }`}
                     >
                       <span className="text-lg">{r.icon}</span>
@@ -218,7 +218,7 @@ export default function AuthModal({ onClose }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/25"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/25"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -239,7 +239,7 @@ export default function AuthModal({ onClose }) {
           <div className="mt-6 text-center">
             <button
               onClick={() => switchTab(!isLogin)}
-              className={`text-sm transition-colors ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`text-sm transition-colors ${isDark ? 'text-surface-400 hover:text-white' : 'text-surface-500 hover:text-surface-900'}`}
             >
               {isLogin ? "Don't have an account? Create one" : 'Already have an account? Sign in'}
             </button>

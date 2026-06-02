@@ -78,62 +78,62 @@ function Settings() {
 
   return (
     <div className="max-w-3xl mx-auto pb-12">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 gradient-text">
         Settings
       </h1>
 
       <div className="space-y-6">
         {/* Profile Information */}
-        <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Profile Information</h2>
+        <div className="glass-card">
+          <h2 className="section-title !mb-4">Profile Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Name</label>
+              <label className="input-label">Name</label>
               <input type="text" name="name" value={formData.name} onChange={handleChange}
-                className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Email</label>
+              <label className="input-label">Email</label>
               <input type="email" name="email" value={formData.email} readOnly
-                className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                className="w-full rounded-xl bg-surface-100 dark:bg-surface-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-surface-400 dark:text-surface-500 cursor-not-allowed"
               />
-              <p className="text-[10px] text-slate-400 mt-1">Email cannot be changed</p>
+              <p className="text-[10px] text-surface-400 mt-1">Email cannot be changed</p>
             </div>
           </div>
           <div className="mt-4">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Bio</label>
+            <label className="input-label">Bio</label>
             <textarea name="bio" value={formData.bio} onChange={handleChange} rows={3}
               placeholder="Tell others about yourself..."
-              className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
+              className="input-field resize-none"
             />
           </div>
         </div>
 
         {/* Change Password */}
-        <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Change Password</h2>
+        <div className="glass-card">
+          <h2 className="section-title !mb-4">Change Password</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Current Password</label>
+              <label className="input-label">Current Password</label>
               <input type="password" name="currentPassword" value={formData.currentPassword} onChange={handleChange}
                 placeholder="Enter current password"
-                className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                className="input-field"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">New Password</label>
+                <label className="input-label">New Password</label>
                 <input type="password" name="newPassword" value={formData.newPassword} onChange={handleChange}
                   placeholder="Enter new password"
-                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  className="input-field"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Confirm New Password</label>
+                <label className="input-label">Confirm New Password</label>
                 <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
                   placeholder="Confirm new password"
-                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  className="input-field"
                 />
               </div>
             </div>
@@ -141,8 +141,8 @@ function Settings() {
         </div>
 
         {/* Notification Preferences */}
-        <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Notification Preferences</h2>
+        <div className="glass-card">
+          <h2 className="section-title !mb-4">Notification Preferences</h2>
           <div className="space-y-3">
             {[
               { key: "email_notifications", label: "Email Notifications" },
@@ -153,13 +153,13 @@ function Settings() {
               { key: "marketing_emails", label: "Marketing Emails" },
             ].map((n) => (
               <div key={n.key} className="flex items-center justify-between py-2">
-                <span className="text-sm text-slate-700 dark:text-slate-300">{n.label}</span>
+                <span className="text-sm text-surface-700 dark:text-surface-300">{n.label}</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" checked={notifications[n.key]}
                     onChange={() => setNotifications({ ...notifications, [n.key]: !notifications[n.key] })}
                     className="sr-only peer"
                   />
-                  <div className="w-10 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-pink-500" />
+                  <div className="w-10 h-5 bg-surface-200 dark:bg-surface-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-pink-500" />
                 </label>
               </div>
             ))}
@@ -167,14 +167,14 @@ function Settings() {
         </div>
 
         {/* Theme Preference */}
-        <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
+        <div className="glass-card">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Theme</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Switch between dark and light mode</p>
+              <h2 className="section-title">Theme</h2>
+              <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">Switch between dark and light mode</p>
             </div>
             <button onClick={toggleTheme}
-              className="relative inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+              className="relative inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-700 border border-slate-200 dark:border-slate-600 hover:bg-surface-200 dark:hover:bg-surface-600 transition"
             >
               {theme === "dark" ? (
                 <svg className="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -190,9 +190,9 @@ function Settings() {
         </div>
 
         {/* Delete Account */}
-        <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-red-500/20 p-6 shadow-lg">
+        <div className="glass-card border-red-500/20">
           <h2 className="text-lg font-bold text-red-400 mb-2">Delete Account</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
             Permanently delete your account and all associated data. This action cannot be undone.
           </p>
           <button onClick={handleDeleteAccount} disabled={deleting}
@@ -205,7 +205,7 @@ function Settings() {
         {/* Save Button */}
         <div className="flex justify-end pt-2">
           <button onClick={handleSubmit} disabled={saving}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold text-sm shadow-lg hover:shadow-purple-500/25 active:scale-[0.98] disabled:opacity-50 transition"
+            className="px-8 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-sm shadow-lg hover:shadow-primary-500/25 active:scale-[0.98] disabled:opacity-50 transition"
           >
             {saving ? (
               <span className="flex items-center gap-2">

@@ -43,12 +43,12 @@ function AppContent() {
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/verify-email";
 
   return (
-    <div className="min-h-screen w-full max-w-full bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300 overflow-x-hidden">
+    <div className="min-h-screen w-full max-w-full bg-surface dark:bg-surface-dark text-surface-900 dark:text-white transition-colors duration-300 overflow-x-hidden">
       <Background />
       {!isAuthPage && <Navbar />}
       <div className={`${isAuthPage ? "" : "pt-14"} flex w-full max-w-full overflow-x-hidden`}>
         <main
-          className="flex-1 w-full min-h-[calc(100vh-3.5rem)] pb-32 px-3 sm:px-4 md:px-6 lg:px-8 max-w-full overflow-x-hidden"
+          className="flex-1 w-full min-h-[calc(100vh-3.5rem)] pb-32 mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 animate-fade-in"
         >
           <Routes>
             {/* Public */}

@@ -14,6 +14,7 @@ export function PlayerProvider({ children }) {
   const audioRef = useRef(new Audio());
   const mediaRef = useRef(null);
   const endedHandlerRef = useRef(null);
+  const isPlayingRef = useRef(false);
 
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -282,11 +283,15 @@ export function PlayerProvider({ children }) {
   }, [volume, muted]);
 
   useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
     const el = audioRef.current;
     const onTime = () => setCurrentTime(el.currentTime);
     const onMeta = () => {
       setDuration(el.duration || 0);
-      if (isPlaying) el.play().catch(() => setIsPlaying(false));
+      if (isPlayingRef.current) el.play().catch(() => setIsPlaying(false));
     };
 
     el.addEventListener('timeupdate', onTime);

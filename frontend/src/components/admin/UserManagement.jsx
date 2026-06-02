@@ -246,7 +246,7 @@ export default function UserManagement({ users = [], onUpdateRole, onDeleteUser,
                   onClick={() => setPage(num)}
                   className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
                     page === num
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25'
+                      ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25'
                       : isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-100'
                   }`}
                 >

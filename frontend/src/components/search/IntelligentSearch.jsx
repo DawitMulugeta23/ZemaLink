@@ -150,7 +150,7 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
           ? 'bg-slate-900/80 border-white/10 focus-within:border-purple-500/50 focus-within:shadow-lg focus-within:shadow-purple-500/10'
           : 'bg-white/80 border-slate-200 focus-within:border-purple-400/50 focus-within:shadow-lg focus-within:shadow-purple-400/10'
       } backdrop-blur-xl`}>
-        <svg className={`absolute left-4 w-5 h-5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`absolute left-4 w-5 h-5 ${isDark ? 'text-surface-500' : 'text-surface-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
@@ -161,13 +161,13 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
           onFocus={() => query.trim() && setShowDropdown(true)}
           placeholder={placeholder || 'Search by mood, genre, artist, or song...'}
           className={`w-full py-4 pl-12 pr-24 text-base outline-none bg-transparent transition-colors ${
-            isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+            isDark ? 'text-white placeholder-slate-500' : 'text-surface-900 placeholder-slate-400'
           }`}
           aria-label="Search"
           autoComplete="off"
         />
         <div className="absolute right-3 flex items-center gap-2">
-          <svg className={`w-4 h-4 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isDark ? 'text-surface-600' : 'text-surface-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
           <button
@@ -175,9 +175,9 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
             disabled={isLoading || !query.trim()}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
               isDark
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 disabled:opacity-40'
-                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-400 hover:to-pink-400 disabled:opacity-40'
-            } disabled:cursor-not-allowed shadow-lg shadow-purple-500/20`}
+                ? 'bg-gradient-to-r from-primary-600 to-accent-600 text-white hover:from-purple-500 hover:to-pink-500 disabled:opacity-40'
+                : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-purple-400 hover:to-pink-400 disabled:opacity-40'
+            } disabled:cursor-not-allowed shadow-lg shadow-primary-500/25`}
           >
             {isLoading ? (
               <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
           {query.trim().length < 2 ? (
             recentSearches.length > 0 && (
               <div className="p-2">
-                <p className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-surface-500' : 'text-surface-400'}`}>
                   Recent Searches
                 </p>
                 {recentSearches.map((term, idx) => (
@@ -238,8 +238,8 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
                     onClick={() => pickSuggestion(term)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-150 ${
                       activeIndex === idx
-                        ? isDark ? 'bg-purple-500/20 text-white' : 'bg-purple-100 text-slate-900'
-                        : isDark ? 'text-slate-300 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'
+                        ? isDark ? 'bg-purple-500/20 text-white' : 'bg-purple-100 text-surface-900'
+                        : isDark ? 'text-surface-300 hover:bg-white/5' : 'text-surface-600 hover:bg-slate-100'
                     }`}
                   >
                     <span className="text-lg">{'\u{23F0}'}</span>
@@ -257,13 +257,13 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
           ) : status === 'empty' && results.length === 0 ? (
             <div className="py-10 text-center">
               <span className="text-3xl block mb-2">{'\u{1F50D}'}</span>
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No suggestions found</p>
-              <p className={`text-xs mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Try different keywords</p>
+              <p className={`text-sm ${isDark ? 'text-surface-400' : 'text-surface-500'}`}>No suggestions found</p>
+              <p className={`text-xs mt-1 ${isDark ? 'text-surface-600' : 'text-surface-400'}`}>Try different keywords</p>
             </div>
           ) : (
             suggestions.length > 0 && (
               <div className="p-2">
-                <p className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-surface-500' : 'text-surface-400'}`}>
                   Suggestions
                 </p>
                 {suggestions.map((s, idx) => (
@@ -272,14 +272,14 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
                     onClick={() => pickSuggestion(s.value)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-150 ${
                       activeIndex === idx
-                        ? isDark ? 'bg-purple-500/20 text-white' : 'bg-purple-100 text-slate-900'
-                        : isDark ? 'text-slate-300 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'
+                        ? isDark ? 'bg-purple-500/20 text-white' : 'bg-purple-100 text-surface-900'
+                        : isDark ? 'text-surface-300 hover:bg-white/5' : 'text-surface-600 hover:bg-slate-100'
                     }`}
                   >
                     <span className="text-lg">{suggestionTypeIcon(s.type)}</span>
                     <span className="text-sm font-medium truncate flex-1">{s.value}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isDark ? 'bg-white/5 text-slate-500' : 'bg-slate-100 text-slate-400'
+                      isDark ? 'bg-white/5 text-surface-500' : 'bg-slate-100 text-surface-400'
                     }`}>{suggestionTypeLabel(s.type)}</span>
                   </button>
                 ))}
@@ -294,7 +294,7 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
           isDark ? 'bg-slate-900/90 border-white/10 backdrop-blur-xl' : 'bg-white/90 border-slate-200 backdrop-blur-xl'
         }`}>
           <div className={`px-4 py-3 border-b ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-surface-400' : 'text-surface-500'}`}>
               Results ({results.length})
             </p>
           </div>
@@ -309,7 +309,7 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
                   isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'
                 }`}
               >
-                <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+                <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg">
                   {song.cover_image && song.cover_image !== 'null' ? (
                     <img src={song.cover_image} alt={song.title} className="w-full h-full object-cover" />
                   ) : (
@@ -318,7 +318,7 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <h4 className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-surface-900'}`}>
                       {song.title}
                     </h4>
                     {song.relevance_score > 0.8 && (
@@ -327,14 +327,14 @@ export default function IntelligentSearch({ onSearch, placeholder }) {
                       </span>
                     )}
                   </div>
-                  <p className={`text-xs truncate mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{song.artist}</p>
+                  <p className={`text-xs truncate mt-0.5 ${isDark ? 'text-surface-400' : 'text-surface-500'}`}>{song.artist}</p>
                   {song.match_reason && (
-                    <p className={`text-xs truncate mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <p className={`text-xs truncate mt-0.5 ${isDark ? 'text-surface-500' : 'text-surface-400'}`}>
                       {song.match_reason}
                     </p>
                   )}
                 </div>
-                <div className={`flex items-center gap-3 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <div className={`flex items-center gap-3 text-xs ${isDark ? 'text-surface-500' : 'text-surface-400'}`}>
                   <span>{song.likes_count || 0} likes</span>
                   <span>{song.plays || 0} plays</span>
                 </div>

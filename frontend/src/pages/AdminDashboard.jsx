@@ -178,7 +178,7 @@ function AdminDashboard() {
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-extrabold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-extrabold gradient-text">
           Admin Dashboard
         </h1>
         <div className="flex bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg p-1 rounded-full border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
@@ -188,7 +188,7 @@ function AdminDashboard() {
               onClick={() => setActiveTab(t.id)}
               className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
                 activeTab === t.id
-                  ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/25"
+                  ? "bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
               }`}
             >
@@ -233,7 +233,7 @@ function AdminDashboard() {
                 { label: "Nov", value: 90 }, { label: "Dec", value: 100 },
               ].map((m) => (
                 <div key={m.label} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full bg-gradient-to-t from-red-500 to-pink-500 rounded-t-md transition-all duration-500"
+                  <div className="w-full bg-gradient-to-t from-primary-500 to-accent-500 rounded-t-md transition-all duration-500"
                     style={{ height: `${m.value}%` }}
                     title={`${m.label}: $${m.value}`}
                   />
@@ -312,8 +312,8 @@ function AdminDashboard() {
               <button key={st.id} onClick={() => setSongSubTab(st.id)}
                 className={`px-5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                   songSubTab === st.id
-                    ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-500/25"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                    ? "bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
                 }`}
               >
                 {st.label}
@@ -700,7 +700,7 @@ function AdminDashboard() {
               </div>
 
               <button type="submit"
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold text-sm shadow-lg hover:shadow-red-500/20 active:scale-[0.98] transition"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold text-sm shadow-lg hover:shadow-primary-500/20 active:scale-[0.98] transition"
               >
                 Save Settings
               </button>

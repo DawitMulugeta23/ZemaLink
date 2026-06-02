@@ -35,11 +35,12 @@ export default function Player() {
   const {
     currentSong, isPlaying, togglePlay, nextSong, prevSong,
     likedSongs, toggleLike, currentTime, duration, seekTo,
-    mediaRef, queue, relatedSongs, addToQueue, removeFromQueue, clearQueue,
+    queue, relatedSongs, addToQueue, removeFromQueue, clearQueue,
     volume, setVolume, muted, toggleMute, toggleLoop, loop, playSong,
   } = usePlayer();
 
   const [showQueue, setShowQueue] = useState(false);
+  const videoRef = useRef(null);
 
   const isLocked = currentSong?.is_premium && !currentSong?.can_play && !isPremium && !currentSong?.purchased;
 
@@ -138,7 +139,7 @@ export default function Player() {
               <div className="relative p-6 md:p-10 flex justify-center">
                 {isVideo ? (
                   <video
-                    ref={mediaRef}
+                    ref={videoRef}
                     src={audioSrc}
                     className="w-full max-w-lg aspect-video object-contain rounded-2xl shadow-2xl"
                     poster={coverImage}
@@ -341,8 +342,7 @@ export default function Player() {
         </div>
       </div>
 
-      {/* Hidden audio element */}
-      {!isVideo && <audio ref={mediaRef} src={audioSrc} preload="metadata" className="hidden" />}
+      {/* Audio playback is handled by PlayerContext's programmatic Audio element */}
     </div>
   );
 }

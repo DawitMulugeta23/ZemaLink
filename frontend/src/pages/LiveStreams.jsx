@@ -76,7 +76,7 @@ function LiveStreams() {
     return (
       <div
         key={stream.id}
-        className="group relative flex flex-col rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden hover:border-red-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg"
+        className="group relative flex flex-col rounded-3xl glass-dark overflow-hidden hover:border-red-500/30 transition-all duration-300 hover:-translate-y-1 shadow-lg"
       >
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-black/40">
           <img
@@ -168,14 +168,14 @@ function LiveStreams() {
     return (
       <div className="max-w-7xl mx-auto pb-12">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-extrabold gradient-text">
             Live Streams
           </h1>
           <p className="text-slate-400 text-sm mt-1">Loading streams...</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden animate-pulse">
+            <div key={i} className="rounded-3xl glass-dark overflow-hidden animate-pulse">
               <div className="aspect-[16/9] bg-white/5" />
               <div className="p-5 space-y-3">
                 <div className="h-3 bg-white/5 rounded w-1/4" />
@@ -197,7 +197,7 @@ function LiveStreams() {
         <span className="text-xs text-slate-500 font-medium bg-white/5 px-2.5 py-0.5 rounded-full">{streams.length}</span>
       </div>
       {streams.length === 0 ? (
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-10 text-center">
+        <div className="rounded-3xl glass-dark p-10 text-center">
           <p className="text-slate-400 text-sm">{emptyMsg}</p>
         </div>
       ) : (
@@ -211,7 +211,7 @@ function LiveStreams() {
   return (
     <div className="max-w-7xl mx-auto pb-12 px-4 md:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-extrabold gradient-text">
           Live Streams
         </h1>
         <p className="text-slate-400 text-sm mt-1">

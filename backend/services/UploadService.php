@@ -8,13 +8,48 @@ class UploadService
 
     private array $allowedTypes = [
         'audio' => [
-            'extensions' => ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac'],
-            'mime_types' => ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/ogg', 'audio/flac', 'audio/x-m4a', 'audio/aac', 'audio/x-aac'],
+            'extensions' => ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'opus', 'amr', 'mid', 'midi', 'caf', 'ac3', 'ra', 'aiff', '3gp'],
+            'mime_types' => [
+                'audio/mpeg', 'audio/mpeg3', 'audio/mp3', 'audio/x-mpeg', 'audio/x-mp3',
+                'audio/wav', 'audio/x-wav', 'audio/wave',
+                'audio/mp4', 'audio/x-m4a', 'audio/m4a',
+                'audio/ogg', 'audio/vorbis', 'application/ogg',
+                'audio/flac', 'audio/x-flac',
+                'audio/aac', 'audio/x-aac', 'audio/aacp',
+                'audio/x-ms-wma', 'audio/wma',
+                'audio/opus',
+                'audio/amr', 'audio/x-amr',
+                'audio/midi', 'audio/x-midi',
+                'audio/x-caf',
+                'audio/ac3', 'audio/x-ac3',
+                'audio/x-realaudio', 'audio/vnd.rn-realaudio',
+                'audio/x-aiff', 'audio/aiff',
+                'audio/3gpp', 'audio/3gpp2',
+                'audio/webm',
+                'audio/x-matroska',
+            ],
             'max_size' => 52428800,
         ],
         'video' => [
-            'extensions' => ['mp4', 'webm', 'mov', 'avi', 'mkv'],
-            'mime_types' => ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'],
+            'extensions' => ['mp4', 'webm', 'mov', 'avi', 'mkv', '3gp', '3g2', 'mts', 'm2ts', 'ts', 'mxf', 'ogv', 'wmv', 'asf', 'flv', 'vob', 'm4v', 'f4v', 'mpg', 'mpeg'],
+            'mime_types' => [
+                'video/mp4', 'video/x-mp4', 'video/mp4v',
+                'video/webm',
+                'video/quicktime', 'video/x-quicktime',
+                'video/x-msvideo', 'video/avi',
+                'video/x-matroska', 'video/mkv',
+                'video/3gpp', 'video/3gpp2',
+                'video/mp2t', 'video/mts',
+                'video/mxf', 'video/x-mxf',
+                'video/ogg',
+                'video/x-ms-wmv', 'video/wmv',
+                'video/x-ms-asf',
+                'video/x-flv',
+                'video/dvd', 'video/mpeg', 'video/x-mpeg', 'video/mpeg2',
+                'video/x-m4v', 'video/m4v',
+                'video/x-f4v',
+                'application/octet-stream',
+            ],
             'max_size' => 209715200,
         ],
         'image' => [
@@ -161,19 +196,25 @@ class UploadService
         }
 
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($extension, $config['extensions'], true)) {
-            return [
-                'valid' => false,
-                'message' => 'Invalid file type. Allowed: ' . implode(', ', $config['extensions']),
-            ];
+        if (empty($extension)) {
+            return ['valid' => false, 'message' => 'File must have an extension'];
         }
 
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
+        if ($type === 'image') {
+            if (!in_array($extension, $config['extensions'], true)) {
+                return [
+                    'valid' => false,
+                    'message' => 'Invalid image type. Allowed: ' . implode(', ', $config['extensions']),
+                ];
+            }
 
-        if (!in_array($mimeType, $config['mime_types'], true)) {
-            return ['valid' => false, 'message' => 'Invalid file format. Please upload a valid ' . $type . ' file'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            if (!in_array($mimeType, $config['mime_types'], true)) {
+                return ['valid' => false, 'message' => 'Invalid image format. Allowed: ' . implode(', ', $config['extensions'])];
+            }
         }
 
         return ['valid' => true, 'message' => ''];

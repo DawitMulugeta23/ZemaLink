@@ -54,6 +54,7 @@ function MusicianDashboard() {
     is_premium: false,
     price: "0.00",
   });
+  const [uploadType, setUploadType] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadCover, setUploadCover] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -145,7 +146,8 @@ function MusicianDashboard() {
   const handleUploadSong = async (e) => {
     e.preventDefault();
     if (!uploadForm.title.trim()) { toast.error("Title is required"); return; }
-    if (!uploadFile) { toast.error("Audio/video file is required"); return; }
+    if (!uploadType || !uploadFile) { toast.error("Please select a file to upload"); return; }
+    if (uploadType === "audio" && !uploadCover) { toast.error("Cover image is required for audio uploads"); return; }
 
     setUploading(true);
     setUploadProgress(30);
@@ -159,6 +161,7 @@ function MusicianDashboard() {
       fd.append("lyrics", uploadForm.lyrics);
       fd.append("is_premium", uploadForm.is_premium ? "1" : "0");
       fd.append("price", uploadForm.is_premium ? uploadForm.price : "0");
+      fd.append("media_type", uploadType);
       fd.append("file", uploadFile);
       if (uploadCover) fd.append("cover", uploadCover);
 
@@ -168,6 +171,7 @@ function MusicianDashboard() {
         setUploadProgress(100);
         toast.success("Song uploaded! Pending approval.");
         setUploadForm({ title: "", artist: "", album: "", genre: "Pop", description: "", lyrics: "", is_premium: false, price: "0.00" });
+        setUploadType(null);
         setUploadFile(null);
         setUploadCover(null);
         load();
@@ -281,7 +285,7 @@ function MusicianDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r gradient-text">
             Musician Studio
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
@@ -295,7 +299,7 @@ function MusicianDashboard() {
               onClick={() => setActiveTab(t.id)}
               className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
                 activeTab === t.id
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25"
+                  ? "bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
               }`}
             >
@@ -320,8 +324,8 @@ function MusicianDashboard() {
           <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats?.likes || 0}</p>
         </div>
         <div className="rounded-2xl bg-purple-500/10 backdrop-blur-lg border border-purple-500/20 p-5 shadow-lg">
-          <p className="text-[10px] text-purple-400 uppercase font-bold tracking-wider">Total Earnings</p>
-          <p className="text-2xl font-black text-purple-400 mt-1">{formatCurrency(earnings + calculateTicketEarnings())} ETB</p>
+          <p className="text-[10px] text-primary-400 uppercase font-bold tracking-wider">Total Earnings</p>
+          <p className="text-2xl font-black text-primary-400 mt-1">{formatCurrency(earnings + calculateTicketEarnings())} ETB</p>
           <p className="text-[9px] text-slate-500 dark:text-slate-400 block mt-1">
             Songs: {formatCurrency(earnings)} | Tickets: {formatCurrency(calculateTicketEarnings())}
           </p>
@@ -335,7 +339,7 @@ function MusicianDashboard() {
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">My Songs</h2>
             <button
               onClick={() => setActiveTab("upload-song")}
-              className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition"
+              className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition"
             >
               Upload New
             </button>
@@ -460,7 +464,7 @@ function MusicianDashboard() {
                       Cancel
                     </button>
                     <button type="submit"
-                      className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 py-2 text-sm font-semibold text-white"
+                      className="flex-1 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 py-2 text-sm font-semibold text-white"
                     >
                       Save Changes
                     </button>
@@ -473,12 +477,41 @@ function MusicianDashboard() {
       )}
 
       {/* ───── UPLOAD SONG TAB ───── */}
-      {activeTab === "upload-song" && (
+      {activeTab === "upload-song" && !uploadType && (
         <div className="max-w-3xl mx-auto">
           <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Upload New Song</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Fill in the details and upload your audio/video file</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Upload Media</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Choose what you want to upload.</p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button onClick={() => { setUploadType("audio"); setUploadFile(null); setUploadCover(null); }}
+                className="flex-1 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 p-10 hover:border-purple-400 hover:bg-purple-500/5 transition cursor-pointer"
+              >
+                <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+                </svg>
+                <span className="text-lg font-semibold text-slate-900 dark:text-white">Upload Audio</span>
+                <span className="text-xs text-slate-400">mp3, wav, aac, ogg, m4a + cover image</span>
+              </button>
+              <button onClick={() => { setUploadType("video"); setUploadFile(null); setUploadCover(null); }}
+                className="flex-1 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 p-10 hover:border-purple-400 hover:bg-purple-500/5 transition cursor-pointer"
+              >
+                <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span className="text-lg font-semibold text-slate-900 dark:text-white">Upload Video</span>
+                <span className="text-xs text-slate-400">mp4, mov, avi, mkv, webm</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      {activeTab === "upload-song" && uploadType === "audio" && (
+        <div className="max-w-3xl mx-auto">
+          <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
+            <button onClick={() => { setUploadType(null); setUploadFile(null); setUploadCover(null); }}
+              className="text-xs text-purple-400 hover:text-purple-300 mb-4">&larr; Change Selection</button>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Upload Audio</h2>
             <form onSubmit={handleUploadSong} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -536,53 +569,21 @@ function MusicianDashboard() {
                 />
               </div>
 
-              {/* File Upload - Drag & Drop */}
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Audio / Video File *</label>
-                <div className="relative">
-                  <CloudinaryUpload
-                    type="audio"
-                    onUploadSuccess={(data) => {
-                      setUploadFile(new File([], data.url));
-                      setUploadProgress(100);
-                    }}
-                  />
-                  <div className="mt-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-4 text-center hover:border-purple-400 transition cursor-pointer"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const f = e.dataTransfer.files[0];
-                      if (f) setUploadFile(f);
-                    }}
-                  >
-                    <input type="file" accept=".mp3,.wav,.m4a,.mp4,.webm,.mov,audio/*,video/*"
-                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                      className="hidden" id="song-file-input"
-                    />
-                    <label htmlFor="song-file-input" className="cursor-pointer">
-                      <svg className="w-8 h-8 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {uploadFile ? uploadFile.name : "Drag & drop or click to select"}
-                      </p>
-                      {uploadFile && (
-                        <p className="text-xs text-purple-400 mt-1">{(uploadFile.size / (1024 * 1024)).toFixed(2)} MB</p>
-                      )}
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cover Image */}
-              <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Cover Image</label>
-                <CloudinaryUpload
-                  type="image"
-                  onUploadSuccess={(data) => {
-                    setUploadCover(data.url);
-                  }}
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Audio file *</label>
+                <input type="file" accept=".mp3,.wav,.aac,.ogg,.m4a,audio/*"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-500/80 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-purple-500"
                 />
+                {uploadFile && <p className="text-xs text-slate-400 mt-1">{uploadFile.name}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Cover image *</label>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp,image/*"
+                  onChange={(e) => setUploadCover(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-fuchsia-500/80 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-fuchsia-500"
+                />
+                {uploadCover && <p className="text-xs text-slate-400 mt-1">{uploadCover.name}</p>}
               </div>
 
               {/* Premium Toggle */}
@@ -611,17 +612,118 @@ function MusicianDashboard() {
                 )}
               </div>
 
-              {/* Progress Bar */}
               {uploadProgress > 0 && uploadProgress < 100 && (
                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
+                  <div className="bg-gradient-to-r from-primary-500 to-accent-500 h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
                 </div>
               )}
-
-              <button type="submit" disabled={uploading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg hover:shadow-purple-500/20 disabled:opacity-50 active:scale-[0.98] transition"
+              <button type="submit" disabled={uploading || !uploadFile || !uploadCover}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold text-sm shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 active:scale-[0.98] transition"
               >
-                {uploading ? "Uploading..." : "Upload Song"}
+                {uploading ? "Uploading..." : "Upload"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "upload-song" && uploadType === "video" && (
+        <div className="max-w-3xl mx-auto">
+          <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
+            <button onClick={() => { setUploadType(null); setUploadFile(null); setUploadCover(null); }}
+              className="text-xs text-purple-400 hover:text-purple-300 mb-4">&larr; Change Selection</button>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Upload Video</h2>
+            <form onSubmit={handleUploadSong} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Title *</label>
+                  <input type="text" value={uploadForm.title}
+                    onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+                    placeholder="e.g. Live Session"
+                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Artist</label>
+                  <input type="text" value={uploadForm.artist}
+                    onChange={(e) => setUploadForm({ ...uploadForm, artist: e.target.value })}
+                    placeholder="e.g. Dawit"
+                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Album / EP</label>
+                  <input type="text" value={uploadForm.album}
+                    onChange={(e) => setUploadForm({ ...uploadForm, album: e.target.value })}
+                    placeholder="Optional release name"
+                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Genre</label>
+                  <select value={uploadForm.genre}
+                    onChange={(e) => setUploadForm({ ...uploadForm, genre: e.target.value })}
+                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  >
+                    {GENRES.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Description</label>
+                <textarea value={uploadForm.description}
+                  onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                  placeholder="Tell listeners about this video..."
+                  rows={3}
+                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Video file *</label>
+                <input type="file" accept=".mp4,.mov,.avi,.mkv,.webm,video/*"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-500/80 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-purple-500"
+                />
+                {uploadFile && <p className="text-xs text-slate-400 mt-1">{uploadFile.name}</p>}
+              </div>
+
+              {/* Premium Toggle */}
+              <div className="rounded-xl bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">Premium Track</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Charge listeners to access this video</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={uploadForm.is_premium}
+                      onChange={(e) => setUploadForm({ ...uploadForm, is_premium: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-300 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-pink-500" />
+                  </label>
+                </div>
+                {uploadForm.is_premium && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Price (ETB)</label>
+                    <input type="number" step="0.01" min="0" value={uploadForm.price}
+                      onChange={(e) => setUploadForm({ ...uploadForm, price: e.target.value })}
+                      className="w-full max-w-xs rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                  <div className="bg-gradient-to-r from-primary-500 to-accent-500 h-full rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              )}
+              <button type="submit" disabled={uploading || !uploadFile}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold text-sm shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 active:scale-[0.98] transition"
+              >
+                {uploading ? "Uploading..." : "Upload"}
               </button>
             </form>
           </div>
@@ -706,7 +808,7 @@ function MusicianDashboard() {
                       Cancel
                     </button>
                   )}
-                  <button type="submit" className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-purple-500/20 transition">
+                  <button type="submit" className="flex-1 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-primary-500/25 transition">
                     {editingEvent ? "Update Event" : "Create Event"}
                   </button>
                 </div>
@@ -728,7 +830,7 @@ function MusicianDashboard() {
                       <div className="flex justify-between items-start gap-2">
                         <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1">{ev.title}</h3>
                         {ev.is_live_stream == 1 && (
-                          <span className="bg-purple-500/20 text-purple-400 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold whitespace-nowrap">Live Stream</span>
+                          <span className="bg-purple-500/20 text-primary-400 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold whitespace-nowrap">Live Stream</span>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -827,7 +929,7 @@ function MusicianDashboard() {
                   </div>
                 )}
                 <button type="submit"
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-purple-500/20 transition"
+                  className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-primary-500/25 transition"
                 >
                   Schedule Stream
                 </button>
@@ -881,7 +983,7 @@ function MusicianDashboard() {
                       {str.status === "live" && (
                         <>
                           <Link to={`/live-streams/${str.id}`}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold"
+                            className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold"
                           >
                             Go Live
                           </Link>
@@ -913,9 +1015,9 @@ function MusicianDashboard() {
         <div className="space-y-6">
           {/* Earnings Summary */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/10 backdrop-blur-lg border border-purple-500/20 p-6 shadow-lg">
-              <p className="text-[10px] text-purple-400 uppercase font-bold tracking-wider">Total Earnings</p>
-              <p className="text-3xl font-black text-purple-400 mt-2">{formatCurrency(earnings + calculateTicketEarnings())} ETB</p>
+            <div className="rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/10 backdrop-blur-lg border border-primary-500/20 p-6 shadow-lg">
+              <p className="text-[10px] text-primary-400 uppercase font-bold tracking-wider">Total Earnings</p>
+              <p className="text-3xl font-black text-primary-400 mt-2">{formatCurrency(earnings + calculateTicketEarnings())} ETB</p>
             </div>
             <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
               <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">Song Revenue</p>
@@ -946,7 +1048,7 @@ function MusicianDashboard() {
                 { label: "Dec", value: 100 },
               ].map((m) => (
                 <div key={m.label} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t-md transition-all duration-500"
+                  <div className="w-full bg-gradient-to-t from-primary-500 to-accent-500 rounded-t-md transition-all duration-500"
                     style={{ height: `${m.value}%` }}
                     title={`${m.label}: ${m.value}%`}
                   />
@@ -985,7 +1087,7 @@ function MusicianDashboard() {
                         <td className="p-4">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                             tx.type === "song" ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            : tx.type === "ticket" ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                            : tx.type === "ticket" ? "bg-purple-500/20 text-primary-400 border-purple-500/30"
                             : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                           }`}>
                             {tx.type || "—"}

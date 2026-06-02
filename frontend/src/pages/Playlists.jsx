@@ -90,7 +90,7 @@ function Playlists() {
         <div className="text-5xl mb-4">🔒</div>
         <h2 className="text-xl font-bold mb-2 text-white">Please log in</h2>
         <p className="text-slate-400 mb-6">You need to be logged in to view your playlists.</p>
-        <Link to="/login" className="inline-flex rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:scale-[1.01] transition">
+        <Link to="/login" className="inline-flex rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 hover:scale-[1.01] transition">
           Sign In
         </Link>
       </div>
@@ -101,7 +101,7 @@ function Playlists() {
     <div className="max-w-7xl mx-auto pb-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-black gradient-text">
             My Playlists
           </h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -110,7 +110,7 @@ function Playlists() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:scale-[1.01] transition duration-300"
+          className="rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 hover:scale-[1.01] transition duration-300"
         >
           ✦ Create Playlist
         </button>
@@ -119,7 +119,7 @@ function Playlists() {
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-4 animate-pulse">
+            <div key={i} className="rounded-3xl glass-dark p-4 animate-pulse">
               <div className="aspect-square w-full bg-white/5 rounded-2xl mb-4" />
               <div className="h-4 bg-white/5 rounded w-3/4 mb-2" />
               <div className="h-3 bg-white/5 rounded w-1/2" />
@@ -127,7 +127,7 @@ function Playlists() {
           ))}
         </div>
       ) : playlists.length === 0 ? (
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-12 text-center max-w-xl mx-auto">
+        <div className="rounded-3xl glass-dark p-12 text-center max-w-xl mx-auto">
           <div className="text-5xl mb-4">📋</div>
           <h3 className="text-lg font-bold text-white mb-2">No playlists yet</h3>
           <p className="text-slate-400 text-sm mb-6">
@@ -148,7 +148,7 @@ function Playlists() {
               <Link
                 key={pl.id}
                 to={`/playlist/${pl.id}`}
-                className="group relative flex flex-col rounded-3xl border border-white/[0.08] bg-[#13131f] p-4 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 hover:border-purple-500/40 hover:shadow-purple-500/25 cursor-pointer"
+                className="group relative flex flex-col rounded-3xl glass-dark p-4 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 hover:border-purple-500/40 hover:shadow-purple-500/25 cursor-pointer"
               >
                 <div className="relative mb-4 overflow-hidden rounded-2xl ring-1 ring-white/5 aspect-square">
                   <img
@@ -184,14 +184,14 @@ function Playlists() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] w-full max-w-md p-6 shadow-2xl relative">
+          <div className="rounded-3xl glass-dark w-full max-w-md p-6 shadow-2xl relative">
             <button
               onClick={() => { setModalOpen(false); setNewName(""); setIsPublic(true); }}
               className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg transition"
             >
               ✕
             </button>
-            <h2 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+            <h2 className="text-xl font-bold gradient-text mb-2">
               ✦ Create Playlist
             </h2>
             <p className="text-slate-400 text-xs mb-6">
@@ -243,7 +243,7 @@ function Playlists() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-semibold hover:opacity-90 transition disabled:opacity-50"
+                  className="px-5 py-2 rounded-full bg-gradient-to-r from-primary-600 to-accent-500 text-white text-xs font-semibold hover:opacity-90 transition disabled:opacity-50"
                 >
                   {creating ? "Creating..." : "Create Playlist"}
                 </button>
@@ -255,7 +255,7 @@ function Playlists() {
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] w-full max-w-sm p-6 shadow-2xl relative text-center">
+          <div className="rounded-3xl glass-dark w-full max-w-sm p-6 shadow-2xl relative text-center">
             <div className="text-5xl mb-4">🗑️</div>
             <h3 className="text-lg font-bold text-white mb-2">Delete Playlist?</h3>
             <p className="text-slate-400 text-sm mb-6">

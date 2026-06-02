@@ -75,7 +75,7 @@ function Profile() {
   if (!user) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-12 max-w-md mx-auto">
+        <div className="rounded-3xl glass-dark p-12 max-w-md mx-auto">
           <div className="text-5xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold mb-2 text-white">Login Required</h2>
           <p className="text-slate-400">Please sign in to view your profile</p>
@@ -88,8 +88,8 @@ function Profile() {
 
   return (
     <div className="max-w-4xl mx-auto pb-4">
-      <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] overflow-hidden shadow-2xl">
-        <div className="h-40 md:h-52 bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 relative">
+      <div className="rounded-3xl glass-dark overflow-hidden shadow-2xl">
+        <div className="h-40 md:h-52 bg-gradient-to-r from-primary-600 via-primary-500 to-accent-500 relative">
           <div className="absolute inset-0 bg-black/10" />
           {isPremium && (
             <div className="absolute top-4 right-4 z-10">
@@ -102,7 +102,7 @@ function Profile() {
 
         <div className="px-6 md:px-8 pb-8">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-14 sm:-mt-16 mb-6 relative z-10">
-            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-[#13131f] bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-xl shrink-0">
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-surface-900 bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-3xl sm:text-4xl font-bold text-white shadow-xl shrink-0">
               {initials}
             </div>
             <div className="text-center sm:text-left flex-1 pt-2 sm:pt-0">
@@ -176,7 +176,7 @@ function Profile() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-semibold hover:opacity-90 transition disabled:opacity-50"
+                  className="px-5 py-2 rounded-full bg-gradient-to-r from-primary-600 to-accent-500 text-white text-xs font-semibold hover:opacity-90 transition disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -192,19 +192,19 @@ function Profile() {
 
           <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
-              <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              <div className="text-2xl font-bold gradient-text">
                 {loadingStats ? "..." : stats.likes}
               </div>
               <div className="text-xs text-slate-400 mt-1">Songs Liked</div>
             </div>
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
-              <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              <div className="text-2xl font-bold gradient-text">
                 {loadingStats ? "..." : stats.playlists}
               </div>
               <div className="text-xs text-slate-400 mt-1">Playlists</div>
             </div>
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 text-center">
-              <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              <div className="text-2xl font-bold gradient-text">
                 {stats.listeningTime > 0 ? `${Math.round(stats.listeningTime / 60)}h` : "—"}
               </div>
               <div className="text-xs text-slate-400 mt-1">Listening Time</div>

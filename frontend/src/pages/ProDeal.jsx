@@ -148,11 +148,11 @@ function ProDeal() {
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-8 text-center">
+        <div className="rounded-3xl glass-dark p-8 text-center">
           <div className="text-6xl mb-4">🔒</div>
           <h1 className="text-2xl font-bold text-white mb-2">Login Required</h1>
           <p className="text-slate-400 mb-6">Please sign in to purchase premium tracks.</p>
-          <Link to={`/login?redirect=/pro-deal?songId=${songId}`} className="inline-flex rounded-xl bg-gradient-to-r from-red-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white hover:scale-105 transition">
+          <Link to={`/login?redirect=/pro-deal?songId=${songId}`} className="inline-flex rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 px-6 py-3 text-sm font-semibold text-white hover:scale-105 transition">
             Sign In to Continue
           </Link>
         </div>
@@ -163,7 +163,7 @@ function ProDeal() {
   if (alreadyPurchased && song) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-8 text-center">
+        <div className="rounded-3xl glass-dark p-8 text-center">
           <div className="text-6xl mb-4">🎉</div>
           <h1 className="text-2xl font-bold text-white mb-2">You Own This Track!</h1>
           <p className="text-slate-400 mb-2">{song.title} — {song.artist}</p>
@@ -180,7 +180,7 @@ function ProDeal() {
 
   return (
     <div className="max-w-3xl mx-auto pb-8 space-y-5">
-      <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-8">
+      <div className="rounded-3xl glass-dark p-8">
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">💎</div>
           <h1 className="text-2xl font-bold text-white">Premium Track</h1>
@@ -240,7 +240,7 @@ function ProDeal() {
                   type="button"
                   disabled={busy}
                   onClick={payWithChapa}
-                  className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:scale-[1.01] transition-all duration-300"
+                  className="rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:scale-[1.01] transition-all duration-300"
                 >
                   {busy ? "Processing..." : "💳 Pay with Chapa"}
                 </button>
@@ -277,7 +277,7 @@ function ProDeal() {
         )}
       </div>
 
-      <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-6">
+      <div className="rounded-3xl glass-dark p-6">
         <h3 className="text-sm font-semibold text-white mb-3">What you get:</h3>
         <ul className="space-y-2 text-sm text-slate-400">
           <li className="flex items-center gap-2">✓ Lifetime access to this track</li>
@@ -289,7 +289,7 @@ function ProDeal() {
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-emerald-500/30 bg-[#13131f] p-8 text-center shadow-2xl">
+          <div className="w-full max-w-md rounded-3xl border glass-dark border-emerald-500/30 p-8 text-center shadow-2xl">
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="text-2xl font-bold text-white mb-2">Purchase Successful!</h2>
             <p className="text-slate-400 text-sm mb-6">

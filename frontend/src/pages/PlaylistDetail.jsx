@@ -166,11 +166,11 @@ function PlaylistDetail() {
 
   if (!playlist) {
     return (
-      <div className="max-w-md mx-auto my-12 text-center rounded-3xl border border-white/[0.08] bg-[#13131f] p-8">
+      <div className="max-w-md mx-auto my-12 text-center rounded-3xl glass-dark p-8">
         <div className="text-5xl mb-4">⚠️</div>
         <h2 className="text-2xl font-bold text-white mb-2">Playlist not found</h2>
         <p className="text-slate-400 mb-6">This playlist might have been deleted or doesn't exist.</p>
-        <Link to="/playlists" className="inline-flex rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition">
+        <Link to="/playlists" className="inline-flex rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 transition">
           Back to Playlists
         </Link>
       </div>
@@ -179,10 +179,10 @@ function PlaylistDetail() {
 
   return (
     <div className="max-w-7xl mx-auto pb-4">
-      <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-6 md:p-8 mb-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-purple-500/15 via-cyan-500/8 to-transparent blur-3xl pointer-events-none" />
+      <div className="rounded-3xl glass-dark p-6 md:p-8 mb-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-primary-500/15 via-accent-500/8 to-transparent blur-3xl pointer-events-none" />
         <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
-          <div className="w-36 h-36 md:w-44 md:h-44 rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center text-5xl shadow-2xl shadow-purple-500/20 text-white shrink-0 overflow-hidden">
+          <div className="w-36 h-36 md:w-44 md:h-44 rounded-2xl bg-gradient-to-tr from-primary-600 to-accent-500 flex items-center justify-center text-5xl shadow-2xl shadow-primary-500/25 text-white shrink-0 overflow-hidden">
             {playlist.cover_image ? (
               <img src={playlist.cover_image} alt={playlist.name} className="w-full h-full object-cover" />
             ) : (
@@ -219,7 +219,7 @@ function PlaylistDetail() {
               <button
                 onClick={handlePlayAll}
                 disabled={songs.length === 0}
-                className="rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-500/25 hover:opacity-90 transition disabled:opacity-40"
+                className="rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-primary-500/25 hover:opacity-90 transition disabled:opacity-40"
               >
                 ▶ Play All
               </button>
@@ -243,7 +243,7 @@ function PlaylistDetail() {
       </div>
 
       {showAddSongs && (
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-5 mb-8">
+        <div className="rounded-3xl glass-dark p-5 mb-8">
           <h3 className="text-sm font-bold text-white mb-3">Add Songs from Library</h3>
           <div className="relative mb-4">
             <input
@@ -300,7 +300,7 @@ function PlaylistDetail() {
       </div>
 
       {songs.length === 0 ? (
-        <div className="rounded-3xl border border-white/[0.08] bg-[#13131f] p-12 text-center max-w-xl mx-auto">
+        <div className="rounded-3xl glass-dark p-12 text-center max-w-xl mx-auto">
           <div className="text-5xl mb-4">🎵</div>
           <h3 className="text-lg font-bold text-white mb-2">This playlist is empty</h3>
           <p className="text-slate-400 text-sm mb-6">
@@ -308,7 +308,7 @@ function PlaylistDetail() {
           </p>
           <button
             onClick={() => setShowAddSongs(true)}
-            className="rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg transition"
+            className="rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg transition"
           >
             + Add Songs
           </button>
@@ -322,7 +322,7 @@ function PlaylistDetail() {
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDrop={() => handleDrop(index)}
-              className={`flex items-center gap-3 p-3 rounded-2xl border border-white/[0.06] bg-[#13131f] transition ${
+              className={`flex items-center gap-3 p-3 rounded-2xl glass-dark transition ${
                 draggedIndex === index ? "opacity-40 border-dashed border-2 border-purple-500" : "hover:bg-white/[0.04]"
               }`}
             >

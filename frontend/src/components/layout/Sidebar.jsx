@@ -28,17 +28,17 @@ export default function Sidebar({ isCollapsed, onToggle, mobileOpen, onMobileClo
   });
 
   const sidebarContent = (
-    <div className={`flex flex-col h-full ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-      <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+    <div className={`flex flex-col h-full ${isDark ? 'text-surface-200' : 'text-surface-700'}`}>
+      <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-surface-700/30' : 'border-slate-200'}`}>
         {!isCollapsed && (
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-semibold uppercase tracking-wider text-surface-400">
             Navigation
           </span>
         )}
         <button
           onClick={onToggle}
           className={`p-1.5 rounded-lg transition-colors ${
-            isDark ? 'hover:bg-white/10 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
+            isDark ? 'hover:bg-white/10 text-surface-400 hover:text-white' : 'hover:bg-slate-100 text-surface-400 hover:text-surface-700'
           }`}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -58,8 +58,8 @@ export default function Sidebar({ isCollapsed, onToggle, mobileOpen, onMobileClo
               isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5 gap-3'
             } ${
               isActive(item.path)
-                ? 'bg-gradient-to-r from-purple-500/15 to-pink-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/20'
-                : `${isDark ? 'hover:bg-white/5 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-900'}`
+                ? 'bg-gradient-to-r from-primary-500/15 to-accent-500/15 text-primary-600 dark:text-primary-300 border border-primary-500/20'
+                : `${isDark ? 'hover:bg-white/5 hover:text-white' : 'hover:bg-slate-100 hover:text-surface-900'}`
             }`}
           >
             <span className={`text-xl transition-transform duration-200 ${isActive(item.path) ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -69,17 +69,17 @@ export default function Sidebar({ isCollapsed, onToggle, mobileOpen, onMobileClo
               <span className="text-sm font-medium">{item.label}</span>
             )}
             {isActive(item.path) && !isCollapsed && (
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-gradient-to-b from-purple-500 to-pink-500" />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-gradient-to-b from-primary-500 to-accent-500" />
             )}
             {isCollapsed && isActive(item.path) && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-gradient-to-b from-purple-500 to-pink-500" />
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-gradient-to-b from-primary-500 to-accent-500" />
             )}
           </Link>
         ))}
       </nav>
 
       {user && (
-        <div className={`p-3 border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+        <div className={`p-3 border-t ${isDark ? 'border-surface-700/30' : 'border-slate-200'}`}>
           <Link
             to="/profile"
             onClick={onMobileClose}
@@ -87,13 +87,13 @@ export default function Sidebar({ isCollapsed, onToggle, mobileOpen, onMobileClo
               isCollapsed ? 'justify-center p-2' : 'p-2 gap-3'
             } ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100'}`}
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg shadow-purple-500/20">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-600 to-accent-500 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg shadow-primary-500/25">
               {user.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{user.name}</p>
-                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400 capitalize">
+                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-500/15 text-primary-400 capitalize">
                   {user.role}
                 </span>
               </div>
@@ -108,7 +108,7 @@ export default function Sidebar({ isCollapsed, onToggle, mobileOpen, onMobileClo
     <>
       <aside
         className={`fixed left-0 top-16 h-[calc(100vh-4rem)] hidden lg:flex flex-col transition-all duration-300 z-30 border-r ${
-          isDark ? 'bg-slate-900/80 border-white/10 backdrop-blur-xl' : 'bg-white/80 border-slate-200 backdrop-blur-xl'
+          isDark ? 'bg-slate-900/80 border-surface-700/30 backdrop-blur-xl' : 'bg-white/80 border-slate-200 backdrop-blur-xl'
         } ${isCollapsed ? 'w-16' : 'w-60'}`}
       >
         {sidebarContent}
@@ -118,7 +118,7 @@ export default function Sidebar({ isCollapsed, onToggle, mobileOpen, onMobileClo
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onMobileClose} />
           <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] w-60 border-r animate-slide-up ${
-            isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'
+            isDark ? 'bg-slate-900 border-surface-700/30' : 'bg-white border-slate-200'
           }`}>
             {sidebarContent}
           </aside>
