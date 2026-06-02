@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { liveStreamService } from "../services/liveStreamService";
+import { eventService } from "../services/eventService";
 import { toast } from "react-toastify";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 const MOCK_CHATTERS = [
   { name: "Aster_M", role: "audience", subscription: "premium" },
@@ -44,7 +46,11 @@ function StreamView() {
   const [newMessage, setNewMessage] = useState("");
   const [viewers, setViewers] = useState(0);
   const [relatedStreams, setRelatedStreams] = useState([]);
-  const [customStreamUrl, setCustomStreamUrl] = useState("");
+
+  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+  const [buyingTicket, setBuyingTicket] = useState(false);
+  const [ticketEvent, setTicketEvent] = useState(null);
+  const [showChat, setShowChat] = useState(false);
 
   const canvasRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -152,23 +158,7 @@ function StreamView() {
     }
   };
 
-  const handleStartStream = async () => {
-    try {
-      const res = await liveStreamService.updateStatus(id, "live", customStreamUrl);
-      if (res.success) {
-        toast.success("You are now LIVE! 📡");
-        loadStream();
-      } else {
-        toast.error(res.message || "Failed to start stream");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error starting stream");
-    }
-  };
-
   const handleEndStream = async () => {
-    if (!confirm("Are you sure you want to end this live stream?")) return;
     try {
       const res = await liveStreamService.updateStatus(id, "ended");
       if (res.success) {
@@ -182,6 +172,73 @@ function StreamView() {
       toast.error("Error ending stream");
     }
   };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/live-streams/${id}`;
+    const shareText = `🎵 Tune in to "${stream.title}" live on ZemaLink!`;
+    if (navigator.share) {
+      navigator.share({ title: stream.title, text: shareText, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(`${shareText}\n${url}`)
+        .then(() => toast.success("Invite link copied!"))
+        .catch(() => toast.error("Failed to copy link"));
+    }
+  };
+
+  const handleBuyMockTicket = async () => {
+    if (!user) { toast.info("Please log in to purchase tickets"); return; }
+    if (!ticketEvent) return;
+    setBuyingTicket(true);
+    try {
+      const res = await eventService.purchaseTicketMock(ticketEvent.id);
+      if (res.success) {
+        toast.success("Ticket purchased! You can now join the stream.");
+        loadStream();
+      } else {
+        toast.error(res.message || "Failed to buy ticket");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An error occurred during checkout");
+    } finally {
+      setBuyingTicket(false);
+    }
+  };
+
+  const handleBuyChapaTicket = async () => {
+    if (!user) { toast.info("Please log in to purchase tickets"); return; }
+    if (!ticketEvent) return;
+    setBuyingTicket(true);
+    try {
+      const returnUrl = window.location.origin + `/live-streams/${id}?purchased=1`;
+      const res = await eventService.initiateTicketPayment(ticketEvent.id, returnUrl);
+      if (res.success) {
+        if (res.already_purchased) {
+          toast.info("You already own a ticket for this event");
+          loadStream();
+        } else if (res.chapa?.data?.checkout_url) {
+          window.location.href = res.chapa.data.checkout_url;
+        } else {
+          toast.error("Could not retrieve checkout URL");
+        }
+      } else {
+        toast.error(res.message || "Failed to initiate payment");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Payment initialization failed");
+    } finally {
+      setBuyingTicket(false);
+    }
+  };
+
+  useEffect(() => {
+    if (stream && stream.ticket_required && !hasAccess && stream.event_id) {
+      eventService.getEventDetails(stream.event_id)
+        .then(res => { if (res.success) setTicketEvent(res.event); })
+        .catch(() => {});
+    }
+  }, [stream, hasAccess]);
 
   const startVisualizer = () => {
     const canvas = canvasRef.current;
@@ -231,20 +288,6 @@ function StreamView() {
 
   const isCreator = stream && intval(stream.musician_id) === intval(user?.id);
 
-  const countdown = useMemo(() => {
-    if (!stream || stream.status !== "scheduled" || !stream.scheduled_at) return null;
-    const diff = new Date(stream.scheduled_at) - new Date();
-    if (diff <= 0) return "Starting soon...";
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    if (d > 0) return `${d}d ${h}h ${m}m`;
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  }, [stream]);
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[500px]">
@@ -253,18 +296,59 @@ function StreamView() {
     );
   }
 
-  if (!hasAccess) {
+  if (!hasAccess && stream && stream.ticket_required) {
+    const isSoldOut = ticketEvent && ticketEvent.tickets_sold >= ticketEvent.total_tickets;
     return (
-      <div className="max-w-md mx-auto my-12 p-8 rounded-3xl glass-dark text-center">
+      <div className="max-w-lg mx-auto my-12 p-8 rounded-3xl glass-dark text-center">
         <div className="text-6xl">🔒</div>
         <h2 className="text-2xl font-black mt-4 text-white">Ticket Required</h2>
         <p className="text-sm text-slate-400 mt-2">
-          This live stream requires a concert ticket. Purchase one from the Events page.
+          This live stream requires a concert ticket to join.
         </p>
-        <div className="mt-8 flex flex-col gap-3">
-          <Link to="/events" className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-2xl py-3.5 text-sm font-bold shadow-lg hover:shadow-primary-500/25 active:scale-95 transition">
-            Buy Concert Ticket
-          </Link>
+        {ticketEvent && (
+          <div className="mt-4 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4 text-left space-y-2">
+            <p className="text-sm text-white font-bold">{ticketEvent.title}</p>
+            <p className="text-xs text-slate-400">
+              <span className="text-slate-500">Price:</span>{" "}
+              {parseFloat(ticketEvent.ticket_price) === 0 ? "FREE" : `${Number(ticketEvent.ticket_price).toFixed(2)} ETB`}
+            </p>
+            <p className="text-xs text-slate-400">
+              <span className="text-slate-500">Tickets:</span>{" "}
+              {ticketEvent.tickets_sold}/{ticketEvent.total_tickets} sold
+            </p>
+          </div>
+        )}
+        <div className="mt-6 flex flex-col gap-3">
+          {user ? (
+            isSoldOut ? (
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-slate-400 text-sm">
+                This event is fully booked.
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleBuyMockTicket}
+                  disabled={buyingTicket}
+                  className="w-full bg-white/5 border border-white/10 text-white rounded-2xl py-3.5 text-sm font-bold hover:bg-white/10 active:scale-95 transition disabled:opacity-50"
+                >
+                  {buyingTicket ? "Processing..." : "Mock Checkout"}
+                </button>
+                {ticketEvent && parseFloat(ticketEvent.ticket_price) > 0 && (
+                  <button
+                    onClick={handleBuyChapaTicket}
+                    disabled={buyingTicket}
+                    className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-2xl py-3.5 text-sm font-bold shadow-lg hover:shadow-primary-500/25 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {buyingTicket ? "Processing..." : "Pay with Chapa"}
+                  </button>
+                )}
+              </>
+            )
+          ) : (
+            <Link to="/login" className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-2xl py-3.5 text-sm font-bold shadow-lg hover:shadow-primary-500/25 active:scale-95 transition">
+              Log In to Purchase
+            </Link>
+          )}
           <Link to="/live-streams" className="w-full bg-white/5 text-white rounded-2xl py-3.5 text-sm font-bold hover:bg-white/10 active:scale-95 transition border border-white/10">
             Back to Feed
           </Link>
@@ -274,122 +358,104 @@ function StreamView() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-12">
+    <div className="max-w-5xl mx-auto px-4 pb-12">
       <div className="mb-4">
         <Link to="/live-streams" className="text-xs font-semibold text-slate-500 hover:text-white flex items-center gap-1.5 transition">
           ← Back to Live Streams
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 flex flex-col">
-          <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden bg-black/60 border border-white/[0.08] shadow-2xl flex flex-col items-center justify-center">
-            {stream.status === "scheduled" && (
-              <div className="text-center p-8">
-                <div className="text-5xl animate-bounce inline-block">⏳</div>
-                <h3 className="text-2xl font-extrabold text-white mt-4">Stream Starting Soon</h3>
-                <p className="text-slate-400 text-sm mt-2">
-                  Countdown: <strong className="text-red-400 text-lg block mt-1">{countdown}</strong>
-                </p>
-                <p className="text-slate-500 text-xs mt-3">
-                  Scheduled: {new Date(stream.scheduled_at).toLocaleString()}
-                </p>
-                {isCreator && (
-                  <div className="mt-6 flex flex-col gap-2 max-w-xs mx-auto">
-                    <input
-                      type="text"
-                      placeholder="Optional embed/YouTube link"
-                      value={customStreamUrl}
-                      onChange={(e) => setCustomStreamUrl(e.target.value)}
-                      className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleStartStream}
-                      className="bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl py-2 px-6 text-xs font-bold shadow-lg hover:shadow-primary-500/25 active:scale-95 transition"
-                    >
-                      Start Stream & Go LIVE
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+      {/* ───── STREAM PLAYER ───── */}
+      <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden bg-black/60 border border-white/[0.08] shadow-2xl flex flex-col items-center justify-center">
+        {stream.status === "ended" && (
+          <div className="text-center p-8">
+            <div className="text-5xl">🛑</div>
+            <h3 className="text-2xl font-extrabold text-white mt-4">Stream Has Ended</h3>
+            <p className="text-slate-400 text-sm mt-2">Thanks for tuning in! The concert performance is completed.</p>
+          </div>
+        )}
 
-            {stream.status === "ended" && (
-              <div className="text-center p-8">
-                <div className="text-5xl">🛑</div>
-                <h3 className="text-2xl font-extrabold text-white mt-4">Stream Has Ended</h3>
-                <p className="text-slate-400 text-sm mt-2">Thanks for tuning in! The concert performance is completed.</p>
-              </div>
-            )}
-
-            {stream.status === "live" && (
-              <div className="absolute inset-0 w-full h-full">
-                {stream.stream_url ? (
-                  <iframe
-                    src={stream.stream_url.replace("watch?v=", "embed/")}
-                    title="Live Stream Frame"
-                    className="w-full h-full"
-                    allowFullScreen
-                    allow="autoplay; encrypted-media"
-                  />
-                ) : (
-                  <div className="relative w-full h-full bg-gradient-to-b from-gray-900 via-gray-950 to-black flex items-end">
-                    <canvas ref={canvasRef} className="w-full h-full absolute inset-0" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-10">
-                      <div className="w-24 h-24 mx-auto rounded-full bg-red-500/25 animate-ping absolute inset-0" />
-                      <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg relative">
-                        <span className="text-3xl">🎤</span>
-                      </div>
-                      <span className="text-xs uppercase tracking-widest text-white/50 block mt-4 font-semibold">
-                        Broadcasting Live Audio Feed
-                      </span>
-                    </div>
+        {stream.status === "live" && (
+          <div className="absolute inset-0 w-full h-full">
+            {stream.stream_url ? (
+              <iframe
+                src={stream.stream_url.replace("watch?v=", "embed/")}
+                title="Live Stream Frame"
+                className="w-full h-full"
+                allowFullScreen
+                allow="autoplay; encrypted-media"
+              />
+            ) : (
+              <div className="relative w-full h-full bg-gradient-to-b from-gray-900 via-gray-950 to-black flex items-end">
+                <canvas ref={canvasRef} className="w-full h-full absolute inset-0" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-10">
+                  <div className="w-24 h-24 mx-auto rounded-full bg-red-500/25 animate-ping absolute inset-0" />
+                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center shadow-lg relative">
+                    <span className="text-3xl">🎤</span>
                   </div>
-                )}
-                <div className="absolute top-4 left-4 flex gap-2 z-20">
-                  <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded shadow">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-                    LIVE
-                  </span>
-                  <span className="bg-black/80 text-white text-[9px] px-2 py-0.5 rounded shadow flex items-center gap-1">
-                    👥 {viewers} watching
+                  <span className="text-xs uppercase tracking-widest text-white/50 block mt-4 font-semibold">
+                    Broadcasting Live Audio Feed
                   </span>
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="mt-4 p-5 rounded-3xl glass-dark">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">
-                  {stream.musician_name}
-                </span>
-                <h2 className="text-xl font-bold text-white mt-0.5">{stream.title}</h2>
-              </div>
-              {isCreator && stream.status === "live" && (
-                <button
-                  type="button"
-                  onClick={handleEndStream}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition"
-                >
-                  End Stream
-                </button>
-              )}
+            <div className="absolute top-4 left-4 flex gap-2 z-20">
+              <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded shadow">
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                LIVE
+              </span>
+              <span className="bg-black/80 text-white text-[9px] px-2 py-0.5 rounded shadow flex items-center gap-1">
+                👥 {viewers} watching
+              </span>
             </div>
-            <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-              {stream.description || "Tune in for this exciting music live stream event hosted on ZemaLink."}
-            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ───── STREAM INFO + ACTIONS ───── */}
+      <div className="mt-4 p-5 rounded-3xl glass-dark">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">
+              {stream.musician_name}
+            </span>
+            <h2 className="text-xl font-bold text-white mt-0.5">{stream.title}</h2>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {isCreator && stream.status === "live" && (
+              <button
+                onClick={() => setShowConfirmEnd(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition"
+              >
+                End Stream
+              </button>
+            )}
+            <button
+              onClick={handleShare}
+              className="bg-white/10 hover:bg-white/20 text-white text-xs px-4 py-2 rounded-xl font-bold transition active:scale-95 flex items-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              {navigator.share ? "Invite" : "Copy Link"}
+            </button>
           </div>
         </div>
+        <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+          {stream.description || "Tune in for this exciting music live stream event hosted on ZemaLink."}
+        </p>
+      </div>
 
-        <div className="flex flex-col h-[500px] lg:h-auto rounded-3xl glass-dark overflow-hidden">
+      {/* ───── CHAT + RELATED STREAMS ───── */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-4">
+        <div className="lg:col-span-3 flex flex-col rounded-3xl glass-dark overflow-hidden max-h-[600px]">
+          {/* Chat Header */}
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
               <span className="text-red-500 text-base">💬</span>
               Live Chat
+              <span className="text-xs text-slate-500 font-medium ml-1">({messages.length})</span>
             </h3>
             {stream.ticket_required == 1 && (
               <span className="text-[10px] text-pink-400 font-semibold bg-pink-500/10 px-2.5 py-1 rounded-md border border-pink-500/20">
@@ -398,6 +464,7 @@ function StreamView() {
             )}
           </div>
 
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scroll-smooth custom-scroll">
             {messages.length === 0 ? (
               <div className="h-full flex items-center justify-center text-center text-slate-500 text-xs p-4">
@@ -433,6 +500,7 @@ function StreamView() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Message Input */}
           <form onSubmit={handleSendMessage} className="p-3 border-t border-white/[0.06] bg-black/25 flex gap-2">
             <input
               type="text"
@@ -450,38 +518,56 @@ function StreamView() {
             </button>
           </form>
         </div>
-      </div>
 
-      {relatedStreams.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-bold text-white mb-4">Other Streams</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {relatedStreams.map((rs) => (
-              <Link
-                key={rs.id}
-                to={`/live-streams/${rs.id}`}
-                className="group flex items-center gap-3 p-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition"
-              >
-                <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-black/40">
-                  <img
-                    src={rs.cover_image || "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=200"}
-                    alt={rs.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=200"; }}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white truncate">{rs.title}</p>
-                  <p className="text-xs text-slate-500 truncate">{rs.musician_name}</p>
-                </div>
-                {rs.status === "live" && (
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                )}
-              </Link>
-            ))}
+        {/* Related Streams Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="rounded-3xl glass-dark p-4">
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-1.5">
+              <span>📡</span> Other Streams
+            </h3>
+            {relatedStreams.length === 0 ? (
+              <p className="text-xs text-slate-500">No other streams right now.</p>
+            ) : (
+              <div className="space-y-3">
+                {relatedStreams.map((rs) => (
+                  <Link
+                    key={rs.id}
+                    to={`/live-streams/${rs.id}`}
+                    className="group flex items-center gap-3 p-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition"
+                  >
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-black/40">
+                      <img
+                        src={rs.cover_image || "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=200"}
+                        alt={rs.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=200"; }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-white truncate">{rs.title}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{rs.musician_name}</p>
+                    </div>
+                    {rs.status === "live" && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+
+      <ConfirmDialog
+        isOpen={showConfirmEnd}
+        onClose={() => setShowConfirmEnd(false)}
+        onConfirm={handleEndStream}
+        title="End Live Stream"
+        message="Are you sure you want to end this live stream?"
+        confirmText="End Stream"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

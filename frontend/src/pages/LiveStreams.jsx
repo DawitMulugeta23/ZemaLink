@@ -39,14 +39,10 @@ function LiveStreams() {
     const live = [];
     const upcoming = [];
     const ended = [];
-    const now = new Date().toISOString();
     streams.forEach((s) => {
       if (s.status === "live") live.push(s);
       else if (s.status === "ended") ended.push(s);
-      else if (s.status === "scheduled" || s.status === "upcoming") {
-        if (s.scheduled_at && s.scheduled_at <= now) live.push(s);
-        else upcoming.push(s);
-      }
+      else upcoming.push(s);
     });
     return { liveStreams: live, upcomingStreams: upcoming, endedStreams: ended };
   }, [streams]);
@@ -96,8 +92,8 @@ function LiveStreams() {
                 Ended
               </span>
             ) : (
-              <span className="bg-blue-600 text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-md shadow-md">
-                Scheduled
+              <span className="bg-slate-600 text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-md shadow-md">
+                Offline
               </span>
             )}
             {ticketRequired && (
@@ -129,7 +125,7 @@ function LiveStreams() {
               ) : isEnded ? (
                 <span>Ended</span>
               ) : (
-                <span>Starts: {formatScheduledTime(stream.scheduled_at)}</span>
+                <span>Created: {new Date(stream.created_at).toLocaleDateString()}</span>
               )}
             </div>
             {needsTicket ? (

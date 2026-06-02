@@ -31,8 +31,10 @@ if ($method === 'GET' && $sub === '') {
     $stmt = $pdo->prepare(
         "SELECT s.*, 
                 (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                COALESCE(s.rating, 0) as rating
+                COALESCE(s.rating, 0) as rating,
+                u.name as uploader_name
          FROM songs s 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE {$where}
          ORDER BY {$orderClause}
          LIMIT ? OFFSET ?"
@@ -55,8 +57,10 @@ if ($method === 'GET' && $sub === 'featured') {
     $stmt = $pdo->query(
         "SELECT s.*, 
                 (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                COALESCE(s.rating, 0) as rating
+                COALESCE(s.rating, 0) as rating,
+                u.name as uploader_name
          FROM songs s 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE s.is_approved = 1 AND s.featured = 1
          ORDER BY s.created_at DESC 
          LIMIT 10"
@@ -92,8 +96,10 @@ if ($method === 'GET' && $sub === 'search') {
     $stmt = $pdo->prepare(
         "SELECT s.*, 
                 (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                COALESCE(s.rating, 0) as rating
+                COALESCE(s.rating, 0) as rating,
+                u.name as uploader_name
          FROM songs s 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE s.is_approved = 1 
            AND (s.title LIKE ? OR s.artist LIKE ? OR s.album LIKE ? OR COALESCE(s.description, '') LIKE ?)
          ORDER BY s.featured DESC, s.rating DESC, s.plays DESC 
@@ -180,8 +186,10 @@ if ($method === 'GET' && $sub === 'related' && is_numeric($subId)) {
     $stmt = $pdo->prepare(
         "SELECT s.*, 
                 (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                COALESCE(s.rating, 0) as rating
+                COALESCE(s.rating, 0) as rating,
+                u.name as uploader_name
          FROM songs s 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE s.id != ? AND s.is_approved = 1 
            AND (s.genre = ? OR s.uploader_id = ?)
          ORDER BY s.rating DESC, s.plays DESC 

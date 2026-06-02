@@ -22,6 +22,7 @@ function mapSong(s) {
   const filePath = getMediaUrl(s.file_path);
   return {
     ...s,
+    artist: s.uploader_name || s.artist,
     file_path: filePath,
     media_type: s.media_type || inferMediaType(filePath),
     cover_image:

@@ -12,12 +12,12 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    { path: '/', label: 'Home', show: true },
-    { path: '/browse', label: 'Browse', show: true },
-    { path: '/events', label: 'Events', show: true },
-    { path: '/live-streams', label: 'Live', show: true },
+    { path: '/', label: '', show: false },
+    { path: '/browse', label: 'Browse', show: isAuthenticated },
+    { path: '/events', label: 'Events', show: isAuthenticated },
+    { path: '/live-streams', label: 'Live', show: isAuthenticated },
     { path: '/library', label: 'Library', show: isAuthenticated },
-    { path: '/playlists', label: 'Playlists', show: isAuthenticated },
+    { path: '/playlists', label: 'Playlists', show: user?.role === 'musician' },
     { path: '/musician-dashboard', label: 'Studio', show: user?.role === 'musician' },
     { path: '/admin-dashboard', label: 'Admin', show: user?.role === 'admin' },
   ];
@@ -30,28 +30,29 @@ export default function Navbar() {
     }`}>
       <div className="mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: '90rem' }}>
         <div className="flex items-center justify-between h-14">
-          <div className="flex items-center gap-2">
-            <Link to="/" className="flex items-center gap-2 group shrink-0 mr-3">
+          <div className="flex items-center shrink-0">
+            <Link to="/" className="flex items-center gap-2 group">
               <span className="text-2xl transition-all duration-300 group-hover:scale-110 group-hover:-rotate-12">🎵</span>
               <span className="text-lg font-bold gradient-text tracking-wide">
                 ZemaLink
               </span>
             </Link>
-            <div className="hidden lg:flex items-center gap-1">
-              {navLinks.map((link) => link.show && (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                    isActive(link.path)
-                      ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25'
-                      : `${isDark ? 'text-surface-300 hover:text-white hover:bg-surface-800' : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100'}`
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+          </div>
+
+          <div className="hidden lg:flex flex-1 justify-center items-center gap-1">
+            {navLinks.map((link) => link.show && (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  isActive(link.path)
+                    ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/25'
+                    : `${isDark ? 'text-surface-300 hover:text-white hover:bg-surface-800' : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100'}`
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           <div className="flex items-center gap-3">

@@ -27,4 +27,12 @@ export const musicianService = {
     }
     return await api.put(`musician/update-song/${id}`, data);
   },
+
+  getPlatformLinks: async () => {
+    return await api.get("musician/platform-links");
+  },
+
+  savePlatformLinks: async (links) => {
+    return await api.post("musician/platform-links", { links });
+  },
 };

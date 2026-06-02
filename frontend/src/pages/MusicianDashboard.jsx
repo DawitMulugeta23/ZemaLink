@@ -6,6 +6,7 @@ import { musicianService } from "../services/musicianService";
 import { eventService } from "../services/eventService";
 import { liveStreamService } from "../services/liveStreamService";
 import CloudinaryUpload from "../components/music/CloudinaryUpload";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 import { GENRES, DEFAULT_COVER } from "../constants";
 import { getMediaUrl } from "../utils/mediaUrl";
 
@@ -15,6 +16,7 @@ const tabs = [
   { id: "events", label: "Events" },
   { id: "live-streams", label: "Live Streams" },
   { id: "earnings", label: "Earnings" },
+  { id: "platform-links", label: "Platform Links" },
 ];
 
 function StatusBadge({ status }) {
@@ -27,6 +29,143 @@ function StatusBadge({ status }) {
     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || styles.pending}`}>
       {status}
     </span>
+  );
+}
+
+const PLATFORM_ICONS = {
+  "spotify": "🎧",
+  "apple-music": "🍎",
+  "youtube": "▶️",
+  "soundcloud": "☁️",
+  "tidal": "🌊",
+  "deezer": "🎵",
+  "other": "🔗"
+};
+
+const PLATFORM_OPTIONS = [
+  { value: "spotify", label: "Spotify" },
+  { value: "apple-music", label: "Apple Music" },
+  { value: "youtube", label: "YouTube" },
+  { value: "soundcloud", label: "SoundCloud" },
+  { value: "tidal", label: "Tidal" },
+  { value: "deezer", label: "Deezer" },
+  { value: "other", label: "Other" },
+];
+
+function PlatformLinksSection() {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    try {
+      const res = await musicianService.getPlatformLinks();
+      if (res.success) setLinks(res.links || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const addLink = () => {
+    setLinks([...links, { platform: "spotify", url: "", label: "" }]);
+  };
+
+  const removeLink = (index) => {
+    setLinks(links.filter((_, i) => i !== index));
+  };
+
+  const updateLink = (index, field, value) => {
+    const updated = [...links];
+    updated[index] = { ...updated[index], [field]: value };
+    setLinks(updated);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await musicianService.savePlatformLinks(links);
+      if (res.success) {
+        toast.success("Platform links saved!");
+        setLinks(res.links || []);
+      } else {
+        toast.error(res.message || "Failed to save");
+      }
+    } catch (err) {
+      toast.error("Error saving platform links");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="w-8 h-8 border-4 border-white/5 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">External Platform Links</h2>
+        <button onClick={addLink}
+          className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg hover:shadow-primary-500/25 transition"
+        >
+          + Add Link
+        </button>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+        Add links to your profiles on other music streaming platforms so fans can find you everywhere.
+      </p>
+
+      {links.length === 0 ? (
+        <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+          <p className="text-slate-400 text-sm">No platform links yet. Click "Add Link" to get started.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {links.map((link, i) => (
+            <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-xl bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+              <span className="text-xl shrink-0">{PLATFORM_ICONS[link.platform] || "🔗"}</span>
+              <select
+                value={link.platform}
+                onChange={(e) => updateLink(i, "platform", e.target.value)}
+                className="w-full sm:w-40 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+              >
+                {PLATFORM_OPTIONS.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="https://..."
+                value={link.url}
+                onChange={(e) => updateLink(i, "url", e.target.value)}
+                className="flex-1 w-full rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+              />
+              <button onClick={() => removeLink(i)}
+                className="text-xs px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition shrink-0"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {links.length > 0 && (
+        <button onClick={handleSave} disabled={saving}
+          className="mt-6 w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl py-3 text-sm font-bold shadow-lg hover:shadow-purple-500/25 transition disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Platform Links"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -46,7 +185,6 @@ function MusicianDashboard() {
   // Upload Song form
   const [uploadForm, setUploadForm] = useState({
     title: "",
-    artist: "",
     album: "",
     genre: "Pop",
     description: "",
@@ -77,12 +215,12 @@ function MusicianDashboard() {
   const [streamForm, setStreamForm] = useState({
     title: "",
     description: "",
-    scheduled_at: "",
-    cover_image: "",
     ticket_required: "0",
     ticket_price: "0.00",
     event_id: "",
   });
+
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,7 +258,6 @@ function MusicianDashboard() {
   useEffect(() => { load(); }, [load]);
 
   const removeSong = async (id) => {
-    if (!confirm("Delete this song permanently?")) return;
     const r = await musicianService.deleteSong(id);
     if (r.success) { toast.success("Song deleted"); load(); }
     else toast.error(r.message || "Failed to delete song");
@@ -154,7 +291,7 @@ function MusicianDashboard() {
     try {
       const fd = new FormData();
       fd.append("title", uploadForm.title);
-      fd.append("artist", uploadForm.artist);
+      fd.append("artist", user.name);
       fd.append("album", uploadForm.album);
       fd.append("genre", uploadForm.genre);
       fd.append("description", uploadForm.description);
@@ -170,7 +307,7 @@ function MusicianDashboard() {
       if (res.success) {
         setUploadProgress(100);
         toast.success("Song uploaded! Pending approval.");
-        setUploadForm({ title: "", artist: "", album: "", genre: "Pop", description: "", lyrics: "", is_premium: false, price: "0.00" });
+        setUploadForm({ title: "", album: "", genre: "Pop", description: "", lyrics: "", is_premium: false, price: "0.00" });
         setUploadType(null);
         setUploadFile(null);
         setUploadCover(null);
@@ -191,6 +328,7 @@ function MusicianDashboard() {
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     if (!eventForm.title || !eventForm.event_date) { toast.error("Title and date are required"); return; }
+    if (new Date(eventForm.event_date) <= new Date()) { toast.error("Event date must be in the future"); return; }
     try {
       const res = editingEvent
         ? await eventService.updateEvent?.(editingEvent.id, eventForm) || { success: false }
@@ -209,7 +347,6 @@ function MusicianDashboard() {
   };
 
   const handleDeleteEvent = async (id) => {
-    if (!confirm("Delete this event?")) return;
     try {
       const res = await eventService.deleteEvent(id);
       if (res.success) { toast.success("Event deleted"); load(); }
@@ -219,21 +356,20 @@ function MusicianDashboard() {
 
   const handleCreateStream = async (e) => {
     e.preventDefault();
-    if (!streamForm.title || !streamForm.scheduled_at) { toast.error("Title and scheduled date/time are required"); return; }
+    if (!streamForm.title) { toast.error("Title is required"); return; }
     try {
       const res = await liveStreamService.createStream(streamForm);
       if (res.success) {
-        toast.success("Live stream scheduled!");
-        setStreamForm({ title: "", description: "", scheduled_at: "", cover_image: "", ticket_required: "0", ticket_price: "0.00", event_id: "" });
+        toast.success("Live stream started!");
+        setStreamForm({ title: "", description: "", ticket_required: "0", ticket_price: "0.00", event_id: "" });
         load();
       } else {
-        toast.error(res.message || "Failed to schedule stream");
+        toast.error(res.message || "Failed to start stream");
       }
-    } catch (err) { toast.error("Error scheduling stream"); }
+    } catch (err) { toast.error("Error starting stream"); }
   };
 
   const handleDeleteStream = async (id) => {
-    if (!confirm("Delete this stream?")) return;
     try {
       const res = await liveStreamService.deleteStream(id);
       if (res.success) { toast.success("Stream deleted"); load(); }
@@ -281,6 +417,7 @@ function MusicianDashboard() {
   }
 
   return (
+    <>
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -397,7 +534,7 @@ function MusicianDashboard() {
                             Edit
                           </button>
                           <button
-                            onClick={() => removeSong(s.id)}
+                            onClick={() => setConfirmAction({ type: 'deleteSong', id: s.id })}
                             className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
                           >
                             Delete
@@ -523,14 +660,6 @@ function MusicianDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Artist</label>
-                  <input type="text" value={uploadForm.artist}
-                    onChange={(e) => setUploadForm({ ...uploadForm, artist: e.target.value })}
-                    placeholder="e.g. Dawit"
-                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                  />
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Album / EP</label>
                   <input type="text" value={uploadForm.album}
                     onChange={(e) => setUploadForm({ ...uploadForm, album: e.target.value })}
@@ -644,14 +773,6 @@ function MusicianDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Artist</label>
-                  <input type="text" value={uploadForm.artist}
-                    onChange={(e) => setUploadForm({ ...uploadForm, artist: e.target.value })}
-                    placeholder="e.g. Dawit"
-                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                  />
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Album / EP</label>
                   <input type="text" value={uploadForm.album}
                     onChange={(e) => setUploadForm({ ...uploadForm, album: e.target.value })}
@@ -759,6 +880,7 @@ function MusicianDashboard() {
                     <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block mb-1">Date & Time</label>
                     <input type="datetime-local" value={eventForm.event_date}
                       onChange={(e) => setEventForm({ ...eventForm, event_date: e.target.value })}
+                      min={new Date().toISOString().slice(0, 16)}
                       className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
                     />
                   </div>
@@ -858,7 +980,7 @@ function MusicianDashboard() {
                       >
                         Edit
                       </button>
-                      <button onClick={() => handleDeleteEvent(ev.id)}
+                      <button onClick={() => setConfirmAction({ type: 'deleteEvent', id: ev.id })}
                         className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
                       >
                         Delete
@@ -877,7 +999,7 @@ function MusicianDashboard() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-6 shadow-lg">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Schedule Stream</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Start Live Stream</h2>
               <form onSubmit={handleCreateStream} className="space-y-4">
                 <div>
                   <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block mb-1">Title</label>
@@ -892,20 +1014,6 @@ function MusicianDashboard() {
                     onChange={(e) => setStreamForm({ ...streamForm, description: e.target.value })}
                     rows={3}
                     className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block mb-1">Scheduled Date & Time</label>
-                  <input type="datetime-local" value={streamForm.scheduled_at}
-                    onChange={(e) => setStreamForm({ ...streamForm, scheduled_at: e.target.value })}
-                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block mb-1">Cover Image URL</label>
-                  <input type="text" placeholder="https://..." value={streamForm.cover_image}
-                    onChange={(e) => setStreamForm({ ...streamForm, cover_image: e.target.value })}
-                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -929,9 +1037,10 @@ function MusicianDashboard() {
                   </div>
                 )}
                 <button type="submit"
-                  className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-primary-500/25 transition"
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-green-500/25 transition flex items-center justify-center gap-2"
                 >
-                  Schedule Stream
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Go Live Now
                 </button>
               </form>
             </div>
@@ -949,38 +1058,32 @@ function MusicianDashboard() {
                   <div key={str.id} className="rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg border border-slate-200 dark:border-slate-700/50 p-5 shadow-lg flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-start gap-2">
-                        <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded font-extrabold ${
-                          str.status === "live"
-                            ? "bg-red-500/80 text-white animate-pulse"
-                            : str.status === "ended"
-                            ? "bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
-                            : "bg-blue-500/80 text-white"
-                        }`}>
-                          {str.status}
-                        </span>
+                        {str.status === "live" ? (
+                          <span className="flex items-center gap-1.5 text-[8px] uppercase tracking-wider px-2 py-0.5 rounded font-extrabold bg-red-500/80 text-white animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                            LIVE
+                          </span>
+                        ) : (
+                          <span className="text-[8px] uppercase tracking-wider px-2 py-0.5 rounded font-extrabold bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300">
+                            Offline
+                          </span>
+                        )}
                         {str.ticket_required == 1 && (
                           <span className="bg-pink-500/20 text-pink-400 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold">Ticket Required</span>
                         )}
                       </div>
                       <h3 className="font-bold text-slate-900 dark:text-white mt-2.5">{str.title}</h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {new Date(str.scheduled_at).toLocaleDateString()} · {new Date(str.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Started {new Date(str.created_at).toLocaleDateString()} · {new Date(str.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-2">
-                      <button onClick={() => handleDeleteStream(str.id)}
+                      <button onClick={() => setConfirmAction({ type: 'deleteStream', id: str.id })}
                         className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
                       >
                         Delete
                       </button>
-                      {str.status === "scheduled" && (
-                        <button onClick={() => handleStreamStatus(str.id, "live")}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition"
-                        >
-                          Start Stream
-                        </button>
-                      )}
-                      {str.status === "live" && (
+                      {str.status === "live" ? (
                         <>
                           <Link to={`/live-streams/${str.id}`}
                             className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold"
@@ -990,11 +1093,10 @@ function MusicianDashboard() {
                           <button onClick={() => handleStreamStatus(str.id, "ended")}
                             className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
                           >
-                            End Stream
+                            Stop Stream
                           </button>
                         </>
-                      )}
-                      {str.status === "ended" && (
+                      ) : (
                         <Link to={`/live-streams/${str.id}`}
                           className="text-xs px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                         >
@@ -1102,7 +1204,32 @@ function MusicianDashboard() {
           </div>
         </div>
       )}
+
+      {/* ───── PLATFORM LINKS TAB ───── */}
+      {activeTab === "platform-links" && <PlatformLinksSection />}
+
     </div>
+      <ConfirmDialog
+        isOpen={confirmAction !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          if (confirmAction.type === 'deleteSong') await removeSong(confirmAction.id);
+          else if (confirmAction.type === 'deleteEvent') await handleDeleteEvent(confirmAction.id);
+          else if (confirmAction.type === 'deleteStream') await handleDeleteStream(confirmAction.id);
+        }}
+        title={
+          confirmAction?.type === 'deleteSong' ? 'Delete Song' :
+          confirmAction?.type === 'deleteEvent' ? 'Delete Event' : 'Delete Stream'
+        }
+        message={
+          confirmAction?.type === 'deleteSong' ? 'Delete this song permanently?' :
+          confirmAction?.type === 'deleteEvent' ? 'Delete this event?' : 'Delete this stream?'
+        }
+        confirmText="Delete"
+        variant="danger"
+      />
+    </>
   );
 }
 

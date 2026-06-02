@@ -57,18 +57,16 @@ function AppContent() {
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
-            {/* Public discovery (no auth required) */}
-            <Route path="/browse" element={<Browse />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/live-streams" element={<LiveStreams />} />
-            <Route path="/live-streams/:id" element={<StreamView />} />
-
-            {/* Auth Required */}
+            {/* Auth Required (music content) */}
+            <Route path="/browse" element={<ProtectedRoute><Browse /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+            <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+            <Route path="/live-streams" element={<ProtectedRoute><LiveStreams /></ProtectedRoute>} />
+            <Route path="/live-streams/:id" element={<ProtectedRoute><StreamView /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
             <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
-            <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
-              <Route path="/playlist/:id" element={<ProtectedRoute><PlaylistDetail /></ProtectedRoute>} />
+            <Route path="/playlists" element={<ProtectedRoute roles={["musician"]}><Playlists /></ProtectedRoute>} />
+              <Route path="/playlist/:id" element={<ProtectedRoute roles={["musician"]}><PlaylistDetail /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />

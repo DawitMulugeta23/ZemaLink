@@ -273,12 +273,12 @@ export default function SongContextMenu({ song, position, onClose, isOpen }) {
   ];
 
   const secondaryItems = [
-    {
+    ...(user?.role === 'musician' ? [{
       label: "Add to Playlist",
       icon: <ChevronRightIcon className="w-full h-full" />,
       action: () => setShowPlaylists(true),
       key: "3",
-    },
+    }] : []),
     { label: "Share", icon: <ShareIcon className="w-full h-full" />, action: handleShare, key: "4" },
   ];
 

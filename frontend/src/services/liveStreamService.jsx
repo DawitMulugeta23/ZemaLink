@@ -10,14 +10,7 @@ export const liveStreamService = {
   },
 
   createStream: async (data) => {
-    if (data instanceof FormData) {
-      return await api.post("live-streams", data);
-    }
-    const formData = new FormData();
-    Object.entries(data || {}).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-    return await api.post("live-streams", formData);
+    return await api.post("live-streams", data);
   },
 
   updateStreamStatus: async (id, status) => {

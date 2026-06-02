@@ -5,9 +5,9 @@ import PlaylistCard from '../components/music/PlaylistCard';
 import { useAuth } from '../context/AuthContext';
 import { songService } from '../services/songService';
 
-const TABS = [
+const TABS = (role) => [
   { id: 'liked', label: 'Liked Songs', icon: '❤️' },
-  { id: 'playlists', label: 'Playlists', icon: '📋' },
+  ...(role === 'musician' ? [{ id: 'playlists', label: 'Playlists', icon: '📋' }] : []),
   { id: 'history', label: 'History', icon: '🕐' },
 ];
 
@@ -134,7 +134,7 @@ export default function Library() {
 
       {/* Tabs with animated underline */}
       <div className="flex gap-1 mb-8 border-b border-white/10">
-        {TABS.map((tab) => (
+        {TABS(user?.role).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

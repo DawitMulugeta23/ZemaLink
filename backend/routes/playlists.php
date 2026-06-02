@@ -19,15 +19,17 @@ switch ($method) {
                 api_error('Access denied', 403);
             }
 
-            $stmt = $pdo->prepare(
-                "SELECT s.*, 
-                        (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                        ps.created_at as added_at
-                 FROM playlist_songs ps
-                 JOIN songs s ON ps.song_id = s.id
-                 WHERE ps.playlist_id = ? AND s.is_approved = 1
-                 ORDER BY ps.position ASC, ps.created_at ASC"
-            );
+    $stmt = $pdo->prepare(
+        "SELECT s.*, 
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                ps.created_at as added_at,
+                u.name as uploader_name
+         FROM playlist_songs ps
+         JOIN songs s ON ps.song_id = s.id
+         LEFT JOIN users u ON s.uploader_id = u.id
+         WHERE ps.playlist_id = ? AND s.is_approved = 1
+         ORDER BY ps.position ASC, ps.created_at ASC"
+    );
             $stmt->execute([$playlistId]);
             $songs = $stmt->fetchAll();
 

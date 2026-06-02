@@ -46,7 +46,6 @@ export const PAYMENT_TYPES = {
 };
 
 export const STREAM_STATUS = {
-  SCHEDULED: "scheduled",
   LIVE: "live",
   ENDED: "ended",
 };

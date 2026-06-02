@@ -144,7 +144,6 @@ export default function Player() {
                     className="w-full max-w-lg aspect-video object-contain rounded-2xl shadow-2xl"
                     poster={coverImage}
                     playsInline
-                    autoPlay={isPlaying}
                     controls
                   />
                 ) : (
@@ -220,17 +219,20 @@ export default function Player() {
 
               {/* Volume & Misc Controls */}
               <div className="flex items-center justify-center gap-4">
-                <button onClick={toggleMute} className="text-slate-500 hover:text-white transition text-lg" title={muted ? 'Unmute' : 'Mute'}>
-                  {muted ? '🔇' : '🔊'}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={volume * 100}
-                  onChange={(e) => setVolume(parseInt(e.target.value) / 100)}
-                  className="range-input w-24 md:w-32"
-                />
+                <div className="flex flex-col items-center gap-1">
+                  <button onClick={toggleMute} className="text-slate-500 hover:text-white transition text-lg" title={muted ? 'Unmute' : 'Mute'}>
+                    {muted ? '🔇' : '🔊'}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume * 100}
+                    onChange={(e) => setVolume(parseInt(e.target.value) / 100)}
+                    className="range-input w-1 h-16 md:h-20"
+                    style={{ writingMode: "vertical-lr", direction: "rtl" }}
+                  />
+                </div>
                 <span className="text-xs text-slate-500 w-8 text-right">{Math.round(volume * 100)}%</span>
                 <div className="w-px h-6 bg-white/10" />
                 <button

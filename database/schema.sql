@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     bio TEXT DEFAULT NULL,
     profile_image VARCHAR(500) DEFAULT NULL,
     genre VARCHAR(100) DEFAULT NULL,
+    platform_links TEXT DEFAULT NULL,
     remember_token VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_role (role),

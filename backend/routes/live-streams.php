@@ -15,8 +15,7 @@ switch ($method) {
                 "SELECT l.*, u.name AS musician_name 
                  FROM live_streams l 
                  JOIN users u ON l.musician_id = u.id 
-                 WHERE l.status != 'ended' 
-                 ORDER BY CASE WHEN l.status = 'live' THEN 1 ELSE 2 END, l.scheduled_at ASC"
+                 ORDER BY CASE WHEN l.status = 'live' THEN 1 ELSE 2 END, l.created_at DESC"
             );
             api_response(['success' => true, 'streams' => $stmt->fetchAll()]);
         }
@@ -63,7 +62,7 @@ function handleStreamDetail(PDO $pdo, AuthMiddleware $auth, int $streamId): void
     $uid = $_SESSION['user_id'] ?? 0;
 
     $stmt = $pdo->prepare(
-        "SELECT l.*, u.name AS musician_name 
+        "SELECT l.*, u.name AS musician_name, u.platform_links
          FROM live_streams l 
          JOIN users u ON l.musician_id = u.id 
          WHERE l.id = ?"
@@ -87,6 +86,12 @@ function handleStreamDetail(PDO $pdo, AuthMiddleware $auth, int $streamId): void
     }
 
     $stream['has_access'] = $hasAccess;
+    if ($stream['platform_links']) {
+        $decoded = json_decode($stream['platform_links'], true);
+        $stream['platform_links'] = is_array($decoded) ? $decoded : [];
+    } else {
+        $stream['platform_links'] = [];
+    }
     api_response(['success' => true, 'stream' => $stream]);
 }
 
@@ -97,28 +102,32 @@ function handleCreateStream(PDO $pdo, AuthMiddleware $auth): void
 
     $title = trim($input['title'] ?? '');
     $description = trim($input['description'] ?? '');
-    $scheduledAt = trim($input['scheduled_at'] ?? '');
     $ticketRequired = !empty($input['ticket_required']) ? 1 : 0;
     $ticketPrice = (float) ($input['ticket_price'] ?? 0);
     $eventId = !empty($input['event_id']) ? (int) $input['event_id'] : null;
     $coverImage = $input['cover_image'] ?? null;
+    $streamUrl = $input['stream_url'] ?? null;
 
-    if ($title === '' || $scheduledAt === '') {
-        api_error('Title and scheduled time are required');
+    if ($title === '') {
+        api_error('Title is required');
     }
 
+    $viewerCount = random_int(10, 100);
     $stmt = $pdo->prepare(
         "INSERT INTO live_streams (musician_id, event_id, title, description, cover_image, 
-                                  scheduled_at, ticket_required, ticket_price, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')"
+                                  scheduled_at, ticket_required, ticket_price, status, stream_url, viewer_count)
+         VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, 'live', ?, ?)"
     );
     $stmt->execute([$user['id'], $eventId, $title, $description, $coverImage,
-                    $scheduledAt, $ticketRequired, $ticketPrice]);
+                    $ticketRequired, $ticketPrice, $streamUrl, $viewerCount]);
+
+    $streamId = (int) $pdo->lastInsertId();
 
     api_response([
         'success' => true,
-        'message' => 'Live stream scheduled successfully',
-        'stream_id' => (int) $pdo->lastInsertId(),
+        'message' => 'Live stream started',
+        'stream_id' => $streamId,
+        'status' => 'live',
     ]);
 }
 
@@ -126,11 +135,10 @@ function handleUpdateStreamStatus(PDO $pdo, AuthMiddleware $auth, int $streamId)
 {
     $user = $auth->requireApprovedMusician();
     $input = get_json_input();
-    $status = $input['status'] ?? 'scheduled';
-    $streamUrl = $input['stream_url'] ?? null;
+    $status = $input['status'] ?? 'ended';
 
-    if (!in_array($status, ['scheduled', 'live', 'ended'], true)) {
-        api_error('Invalid status. Must be: scheduled, live, or ended');
+    if (!in_array($status, ['live', 'ended'], true)) {
+        api_error('Invalid status. Must be: live or ended');
     }
 
     $stmt = $pdo->prepare("SELECT id FROM live_streams WHERE id = ? AND musician_id = ?");
@@ -141,14 +149,15 @@ function handleUpdateStreamStatus(PDO $pdo, AuthMiddleware $auth, int $streamId)
 
     if ($status === 'live') {
         $viewerCount = random_int(10, 100);
+        $streamUrl = $input['stream_url'] ?? null;
         $pdo->prepare("UPDATE live_streams SET status = 'live', stream_url = ?, viewer_count = ? WHERE id = ?")
             ->execute([$streamUrl, $viewerCount, $streamId]);
     } else {
-        $pdo->prepare("UPDATE live_streams SET status = ?, viewer_count = 0 WHERE id = ?")
-            ->execute([$status, $streamId]);
+        $pdo->prepare("UPDATE live_streams SET status = 'ended', viewer_count = 0 WHERE id = ?")
+            ->execute([$streamId]);
     }
 
-    api_response(['success' => true, 'message' => "Stream status updated to {$status}", 'status' => $status]);
+    api_response(['success' => true, 'message' => $status === 'live' ? 'Stream started' : 'Stream ended', 'status' => $status]);
 }
 
 function handleGetMessages(PDO $pdo, AuthMiddleware $auth, int $streamId): void

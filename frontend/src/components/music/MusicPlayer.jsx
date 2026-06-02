@@ -127,7 +127,6 @@ export default function MusicPlayer() {
     toggleLoop,
     toggleShuffle,
     playSong,
-    audioRef,
   } = usePlayer();
 
   const [expanded, setExpanded] = useState(false);
@@ -207,15 +206,6 @@ export default function MusicPlayer() {
 
   return (
     <>
-      {isVideo && audioRef.current && (
-        <video
-          ref={audioRef}
-          src={currentSong.file_path}
-          preload="metadata"
-          className="hidden"
-        />
-      )}
-
       <div
         className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-out ${
           expanded ? "translate-y-0" : ""
@@ -369,7 +359,7 @@ export default function MusicPlayer() {
                 )}
 
                 {/* Volume (desktop) */}
-                <div className="hidden md:flex items-center gap-1.5">
+                <div className="hidden md:flex flex-col items-center gap-1">
                   <button
                     onClick={toggleMute}
                     className="p-1.5 text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-colors"
@@ -388,8 +378,9 @@ export default function MusicPlayer() {
                     step={0.01}
                     value={muted ? 0 : volume}
                     onChange={handleVolumeChange}
-                    className="w-16 lg:w-20 h-1 rounded-full bg-surface-200 dark:bg-surface-700 appearance-none cursor-pointer range-input"
+                    className="w-1 h-16 lg:h-20 rounded-full bg-surface-200 dark:bg-surface-700 appearance-none cursor-pointer range-input"
                     aria-label="Volume"
+                    style={{ writingMode: "vertical-lr", direction: "rtl" }}
                   />
                 </div>
 

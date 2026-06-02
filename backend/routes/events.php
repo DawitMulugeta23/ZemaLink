@@ -124,6 +124,10 @@ switch ($method) {
             api_error('Title and event date are required');
         }
 
+        if ($eventDate !== '' && $eventDate <= date('Y-m-d\TH:i:s')) {
+            api_error('Event date must be in the future');
+        }
+
         $stmt = $pdo->prepare(
             "INSERT INTO events (musician_id, title, description, event_date, location, 
                                 cover_image, ticket_price, total_tickets, is_live_stream)

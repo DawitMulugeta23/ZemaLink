@@ -12,6 +12,7 @@ switch ($method) {
             'events' => handleMyEvents($pdo, $userId),
             'live-streams' => handleMyStreams($pdo, $userId),
             'profile' => handleMusicianProfile($pdo, $userId),
+            'platform-links' => handleGetPlatformLinks($pdo, $userId),
             default => api_error('Musician route not found', 404),
         };
         break;
@@ -21,6 +22,7 @@ switch ($method) {
             'upload-song' => handleUploadSong($pdo, $userId, $uploadService),
             'update-song' => handleUpdateSong($pdo, $userId, $uploadService, $subId),
             'delete-song' => handleDeleteSong($pdo, $userId, $uploadService, $subId),
+            'platform-links' => handleSavePlatformLinks($pdo, $userId),
             default => api_error('Musician route not found', 404),
         };
         break;
@@ -137,6 +139,7 @@ function handleMusicianProfile(PDO $pdo, int $userId): void
 {
     $stmt = $pdo->prepare(
         "SELECT u.id, u.name, u.email, u.profile_image as avatar, u.created_at as member_since,
+                u.platform_links,
                 (SELECT COUNT(*) FROM songs WHERE uploader_id = u.id AND is_approved = 1) as song_count,
                 (SELECT COALESCE(SUM(plays), 0) FROM songs WHERE uploader_id = u.id) as total_plays
          FROM users u WHERE u.id = ?"
@@ -148,6 +151,12 @@ function handleMusicianProfile(PDO $pdo, int $userId): void
         api_error('Profile not found', 404);
     }
 
+    if ($profile && $profile['platform_links']) {
+        $decoded = json_decode($profile['platform_links'], true);
+        $profile['platform_links'] = is_array($decoded) ? $decoded : [];
+    } else {
+        $profile['platform_links'] = [];
+    }
     api_response(['success' => true, 'profile' => $profile]);
 }
 
@@ -318,4 +327,38 @@ function handleDeleteSong(PDO $pdo, int $userId, UploadService $uploadService, s
     $pdo->prepare("DELETE FROM songs WHERE id = ? AND uploader_id = ?")->execute([$songId, $userId]);
 
     api_response(['success' => true, 'message' => 'Song deleted']);
+}
+
+function handleGetPlatformLinks(PDO $pdo, int $userId): void
+{
+    $stmt = $pdo->prepare("SELECT platform_links FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    $links = [];
+    if ($row && $row['platform_links']) {
+        $decoded = json_decode($row['platform_links'], true);
+        if (is_array($decoded)) $links = $decoded;
+    }
+    api_response(['success' => true, 'links' => $links]);
+}
+
+function handleSavePlatformLinks(PDO $pdo, int $userId): void
+{
+    $input = get_json_input();
+    $links = $input['links'] ?? [];
+    if (!is_array($links)) {
+        api_error('Links must be an array');
+    }
+    $validPlatforms = ['spotify', 'apple-music', 'youtube', 'soundcloud', 'tidal', 'deezer', 'other'];
+    $filtered = [];
+    foreach ($links as $link) {
+        $platform = trim($link['platform'] ?? '');
+        $url = trim($link['url'] ?? '');
+        if ($platform !== '' && $url !== '' && in_array($platform, $validPlatforms)) {
+            $filtered[] = ['platform' => $platform, 'url' => $url, 'label' => trim($link['label'] ?? '')];
+        }
+    }
+    $stmt = $pdo->prepare("UPDATE users SET platform_links = ? WHERE id = ?");
+    $stmt->execute([json_encode($filtered), $userId]);
+    api_response(['success' => true, 'message' => 'Platform links saved', 'links' => $filtered]);
 }

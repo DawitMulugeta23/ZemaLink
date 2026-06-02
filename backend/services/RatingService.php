@@ -51,9 +51,11 @@ class RatingService
             "SELECT s.*, 
                     (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
                     COALESCE(s.rating, 0) as rating,
+                    u.name as uploader_name,
                     (SELECT COUNT(*) FROM listening_history 
                      WHERE song_id = s.id AND played_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as recent_plays
              FROM songs s 
+             LEFT JOIN users u ON s.uploader_id = u.id
              WHERE s.is_approved = 1
              HAVING recent_plays > 0 OR rating > 0
              ORDER BY (recent_plays * 0.6 + rating * 20 * 0.4) DESC, s.created_at DESC
@@ -69,8 +71,10 @@ class RatingService
             "SELECT s.*, 
                     (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
                     COALESCE(s.rating, 0) as rating,
-                    s.plays as total_plays
+                    s.plays as total_plays,
+                    u.name as uploader_name
              FROM songs s 
+             LEFT JOIN users u ON s.uploader_id = u.id
              WHERE s.is_approved = 1 AND COALESCE(s.rating, 0) > 0
              ORDER BY s.rating DESC, s.plays DESC 
              LIMIT ?"
@@ -142,8 +146,10 @@ class RatingService
         $stmt = $this->pdo->prepare(
             "SELECT s.*, 
                     (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                    COALESCE(s.rating, 0) as rating
+                    COALESCE(s.rating, 0) as rating,
+                    u.name as uploader_name
              FROM songs s 
+             LEFT JOIN users u ON s.uploader_id = u.id
              WHERE s.is_approved = 1
              ORDER BY s.created_at DESC 
              LIMIT ?"

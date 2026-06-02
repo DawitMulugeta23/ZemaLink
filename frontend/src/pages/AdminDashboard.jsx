@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { adminService } from "../services/adminService";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 const mainTabs = [
   { id: "overview", label: "Overview" },
@@ -48,6 +49,7 @@ function AdminDashboard() {
   const [reports, setReports] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   // Search / filter states
   const [songSearch, setSongSearch] = useState("");
@@ -87,7 +89,6 @@ function AdminDashboard() {
   };
 
   const rejectMusician = async (id) => {
-    if (!confirm("Reject this registration?")) return;
     const r = await adminService.rejectMusician(id);
     if (r.success) { toast.success("Musician rejected"); loadAll(); }
     else toast.error(r.message || "Failed to reject");
@@ -100,7 +101,6 @@ function AdminDashboard() {
   };
 
   const rejectSong = async (id) => {
-    if (!confirm("Reject this song?")) return;
     const r = await adminService.rejectSong(id);
     if (r.success) { toast.success("Song rejected"); loadAll(); }
     else toast.error(r.message || "Failed to reject song");
@@ -118,14 +118,12 @@ function AdminDashboard() {
   };
 
   const deleteSong = async (id) => {
-    if (!confirm("Delete song permanently?")) return;
     await adminService.deleteSong(id);
     toast.success("Song deleted");
     loadAll();
   };
 
   const deleteUser = async (id) => {
-    if (!confirm("Delete this user permanently?")) return;
     const r = await adminService.deleteUser(id);
     if (r.success) { toast.success("User deleted"); loadAll(); }
     else toast.error(r.message || "Failed to delete user");
@@ -175,6 +173,7 @@ function AdminDashboard() {
   }
 
   return (
+    <>
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -344,7 +343,7 @@ function AdminDashboard() {
                       >
                         Approve
                       </button>
-                      <button onClick={() => rejectSong(s.id)}
+                      <button onClick={() => setConfirmAction({ type: 'rejectSong', id: s.id })}
                         className="px-4 py-2 rounded-xl border border-red-400/50 text-red-300 text-xs hover:bg-red-500/10 transition"
                       >
                         Reject
@@ -404,7 +403,7 @@ function AdminDashboard() {
                           </td>
                           <td className="p-4 text-center text-slate-600 dark:text-slate-300">{s.plays || 0}</td>
                           <td className="p-4 text-right">
-                            <button onClick={() => deleteSong(s.id)}
+                            <button onClick={() => setConfirmAction({ type: 'deleteSong', id: s.id })}
                               className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
                             >
                               Delete
@@ -457,7 +456,7 @@ function AdminDashboard() {
                       >
                         Approve
                       </button>
-                      <button onClick={() => rejectMusician(m.id)}
+                      <button onClick={() => setConfirmAction({ type: 'rejectMusician', id: m.id })}
                         className="px-3 py-1.5 rounded-lg border border-red-400/50 text-red-300 text-xs hover:bg-red-500/10 transition"
                       >
                         Reject
@@ -507,7 +506,7 @@ function AdminDashboard() {
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-4 text-right">
-                        <button onClick={() => deleteUser(u.id)}
+                        <button onClick={() => setConfirmAction({ type: 'deleteUser', id: u.id })}
                           className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
                         >
                           Delete
@@ -709,6 +708,34 @@ function AdminDashboard() {
         </div>
       )}
     </div>
+      <ConfirmDialog
+        isOpen={confirmAction !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          if (confirmAction.type === 'rejectSong') await rejectSong(confirmAction.id);
+          else if (confirmAction.type === 'deleteSong') await deleteSong(confirmAction.id);
+          else if (confirmAction.type === 'rejectMusician') await rejectMusician(confirmAction.id);
+          else if (confirmAction.type === 'deleteUser') await deleteUser(confirmAction.id);
+        }}
+        title={
+          confirmAction?.type === 'rejectSong' ? 'Reject Song' :
+          confirmAction?.type === 'deleteSong' ? 'Delete Song' :
+          confirmAction?.type === 'rejectMusician' ? 'Reject Registration' : 'Delete User'
+        }
+        message={
+          confirmAction?.type === 'rejectSong' ? 'Reject this song?' :
+          confirmAction?.type === 'deleteSong' ? 'Delete song permanently?' :
+          confirmAction?.type === 'rejectMusician' ? 'Reject this registration?' : 'Delete this user permanently?'
+        }
+        confirmText={
+          confirmAction?.type === 'rejectSong' ? 'Reject' :
+          confirmAction?.type === 'deleteSong' ? 'Delete' :
+          confirmAction?.type === 'rejectMusician' ? 'Reject' : 'Delete'
+        }
+        variant="danger"
+      />
+    </>
   );
 }
 

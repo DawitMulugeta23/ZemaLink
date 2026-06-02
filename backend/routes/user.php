@@ -71,9 +71,11 @@ function handleGetLikes(PDO $pdo, AuthMiddleware $auth): void
     $stmt = $pdo->prepare(
         "SELECT s.*, 
                 (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
-                COALESCE(s.rating, 0) as rating
+                COALESCE(s.rating, 0) as rating,
+                u.name as uploader_name
          FROM likes l 
          JOIN songs s ON l.song_id = s.id 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE l.user_id = ? AND s.is_approved = 1
          ORDER BY l.created_at DESC"
     );
@@ -87,9 +89,11 @@ function handleGetPurchased(PDO $pdo, AuthMiddleware $auth): void
 
     $stmt = $pdo->prepare(
         "SELECT s.*, up.purchased_at,
-                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count
+                (SELECT COUNT(*) FROM likes WHERE song_id = s.id) as likes_count,
+                u.name as uploader_name
          FROM user_purchases up 
          JOIN songs s ON up.song_id = s.id 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE up.user_id = ? AND s.is_approved = 1
          ORDER BY up.purchased_at DESC"
     );
@@ -107,9 +111,10 @@ function handleListeningHistory(PDO $pdo, AuthMiddleware $auth): void
     $limit = min(100, max(1, (int) ($_GET['limit'] ?? 50)));
 
     $stmt = $pdo->prepare(
-        "SELECT s.*, lh.played_at
+        "SELECT s.*, lh.played_at, u.name as uploader_name
          FROM listening_history lh 
          JOIN songs s ON lh.song_id = s.id 
+         LEFT JOIN users u ON s.uploader_id = u.id
          WHERE lh.user_id = ? AND s.is_approved = 1
          ORDER BY lh.played_at DESC 
          LIMIT ?"

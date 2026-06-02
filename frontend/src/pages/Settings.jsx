@@ -2,12 +2,16 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { toast } from "react-toastify";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 function Settings() {
   const { user, updateProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteCode, setDeleteCode] = useState("");
+  const [showDeleteInput, setShowDeleteInput] = useState(false);
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -58,13 +62,6 @@ function Settings() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm("Are you absolutely sure? This action cannot be undone. All your data will be permanently deleted.")) return;
-    if (!confirm("Type 'DELETE' in the next prompt to confirm.")) return;
-    const code = prompt("Type DELETE to confirm account deletion:");
-    if (code !== "DELETE") {
-      toast.error("Confirmation failed");
-      return;
-    }
     setDeleting(true);
     try {
       // Call delete account API
@@ -73,10 +70,13 @@ function Settings() {
       toast.error("Failed to delete account");
     } finally {
       setDeleting(false);
+      setShowDeleteInput(false);
+      setDeleteCode("");
     }
   };
 
   return (
+    <>
     <div className="max-w-3xl mx-auto pb-12">
       <h1 className="text-2xl md:text-3xl font-bold mb-6 gradient-text">
         Settings
@@ -195,7 +195,7 @@ function Settings() {
           <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
             Permanently delete your account and all associated data. This action cannot be undone.
           </p>
-          <button onClick={handleDeleteAccount} disabled={deleting}
+          <button onClick={() => setConfirmDelete(true)} disabled={deleting}
             className="px-6 py-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-semibold text-sm hover:bg-red-500/20 disabled:opacity-50 transition"
           >
             {deleting ? "Deleting..." : "Delete My Account"}
@@ -220,6 +220,51 @@ function Settings() {
         </div>
       </div>
     </div>
+
+      <ConfirmDialog
+        isOpen={confirmDelete && !showDeleteInput}
+        onClose={() => { setConfirmDelete(false); setShowDeleteInput(false); }}
+        onConfirm={() => setShowDeleteInput(true)}
+        title="Delete Account"
+        message="Are you absolutely sure? This action cannot be undone. All your data will be permanently deleted."
+        confirmText="Yes, Delete My Account"
+        variant="danger"
+      />
+
+      {showDeleteInput && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900/95 backdrop-blur-2xl shadow-2xl p-6">
+            <h3 className="text-lg font-bold text-white mb-2 text-center">Confirm Deletion</h3>
+            <p className="text-sm text-slate-400 mb-4 text-center">
+              Type <span className="text-red-400 font-bold">DELETE</span> to confirm account deletion:
+            </p>
+            <input
+              type="text"
+              value={deleteCode}
+              onChange={(e) => setDeleteCode(e.target.value)}
+              placeholder="Type DELETE here"
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-center tracking-widest"
+              autoFocus
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => { setConfirmDelete(false); setShowDeleteInput(false); setDeleteCode(""); }}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-slate-300 text-sm font-medium hover:bg-white/5 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteCode !== "DELETE" || deleting}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-rose-600 shadow-lg shadow-red-500/25 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? "Deleting..." : "Delete My Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

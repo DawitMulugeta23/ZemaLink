@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { usePlayer } from "../../context/PlayerContext";
-import { getMediaUrl } from "../../utils/mediaUrl";
+import { IMAGE_FALLBACK } from "../../utils/mediaUrl";
 import { formatTime } from "../../utils/helpers";
 import { songService } from "../../services/songService";
 import RatingStars from "./RatingStars";
@@ -66,7 +66,7 @@ export default function SongCard({ song, onPlay, showActions = true }) {
 
   const isCurrentlyPlaying = currentSong?.id === song?.id && isPlaying;
   const isLiked = song && likedSongs?.some((s) => s.id === song.id);
-  const coverUrl = song ? getMediaUrl(song.cover_image) : "/assets/images/default-cover.svg";
+  const coverUrl = song?.cover_image && song.cover_image !== "null" ? song.cover_image : IMAGE_FALLBACK;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -270,6 +270,12 @@ export default function SongCard({ song, onPlay, showActions = true }) {
             <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-surface-400 tabular-nums">
               {(song.plays > 0 || song.plays_count > 0) && (
                 <span>{song.plays || song.plays_count || 0} plays</span>
+              )}
+              {(song.likes_count > 0) && (
+                <span className="flex items-center gap-0.5">
+                  <HeartIcon filled={false} className="w-2.5 h-2.5" />
+                  {song.likes_count}
+                </span>
               )}
             </div>
 

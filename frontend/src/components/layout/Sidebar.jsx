@@ -7,7 +7,7 @@ const navItems = [
   { path: '/browse', icon: '🎵', label: 'Browse' },
   { path: '/search', icon: '🔍', label: 'Search' },
   { path: '/library', icon: '📚', label: 'Library', auth: true },
-  { path: '/playlists', icon: '📋', label: 'Playlists', auth: true },
+  { path: '/playlists', icon: '📋', label: 'Playlists', role: 'musician' },
   { path: '/events', icon: '🎫', label: 'Events' },
   { path: '/live-streams', icon: '📺', label: 'Live Streams' },
   { path: '/musician-dashboard', icon: '🎤', label: 'Studio', role: 'musician' },

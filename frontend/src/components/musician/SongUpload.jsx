@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
 
 function SongUpload() {
   const [page, setPage] = useState("select");
@@ -40,7 +41,7 @@ function AudioUpload({ onBack }) {
   const [coverFile, setCoverFile] = useState(null);
 
   const handleUpload = () => {
-    alert(`Audio: ${audioFile?.name}\nCover: ${coverFile?.name}`);
+    toast.info(`Uploading audio: ${audioFile?.name}`);
     console.log("Audio:", audioFile?.name, "Cover:", coverFile?.name);
   };
 
@@ -74,7 +75,7 @@ function VideoUpload({ onBack }) {
   const [videoFile, setVideoFile] = useState(null);
 
   const handleUpload = () => {
-    alert(`Video: ${videoFile?.name}`);
+    toast.info(`Uploading video: ${videoFile?.name}`);
     console.log("Video:", videoFile?.name);
   };
 

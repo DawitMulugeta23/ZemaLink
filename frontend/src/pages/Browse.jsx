@@ -2,18 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SongCard from '../components/music/SongCard';
 import { songService } from '../services/songService';
-import { GENRES, ITEMS_PER_PAGE } from '../constants';
+import { ITEMS_PER_PAGE } from '../constants';
 
 const SORT_OPTIONS = [
   { value: 'popular', label: 'Most Popular' },
   { value: 'newest', label: 'Newest' },
   { value: 'top-rated', label: 'Top Rated' },
-];
-
-const MEDIA_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'video', label: 'Video' },
 ];
 
 function GridSkeleton() {
@@ -36,8 +30,6 @@ export default function Browse() {
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-  const [selectedGenre, setSelectedGenre] = useState(searchParams.get('genre') || 'All');
-  const [mediaFilter, setMediaFilter] = useState('all');
   const [sortBy, setSortBy] = useState('popular');
   const [page, setPage] = useState(1);
   const [totalSongs, setTotalSongs] = useState(0);
@@ -51,11 +43,8 @@ export default function Browse() {
     try {
       const params = {};
       if (opts.search || searchQuery) params.search = opts.search || searchQuery;
-      if (opts.genre && opts.genre !== 'All') params.genre = opts.genre;
-      if (!opts.genre || opts.genre === 'All') {
-        params.page = opts.page || page;
-        params.limit = ITEMS_PER_PAGE;
-      }
+      params.page = opts.page || page;
+      params.limit = ITEMS_PER_PAGE;
       let data = await songService.getSongs(params);
 
       if (!data || data.length === 0) {
@@ -74,10 +63,6 @@ export default function Browse() {
         sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
       }
 
-      if (opts.media && opts.media !== 'all') {
-        sorted = sorted.filter((s) => s.media_type === opts.media);
-      }
-
       setSongs(sorted);
       setTotalSongs(sorted.length);
     } catch (err) {
@@ -86,38 +71,24 @@ export default function Browse() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedGenre, sortBy, mediaFilter, page]);
+  }, [searchQuery, sortBy, page]);
 
   useEffect(() => {
-    const genreParam = searchParams.get('genre');
     const searchParam = searchParams.get('search');
     const sortParam = searchParams.get('sort');
-    if (genreParam) setSelectedGenre(genreParam);
     if (searchParam) setSearchQuery(searchParam);
     if (sortParam) setSortBy(sortParam);
   }, []);
 
   useEffect(() => {
-    loadSongs({
-      search: searchQuery,
-      genre: selectedGenre,
-      sort: sortBy,
-      media: mediaFilter,
-      page: 1,
-    });
-  }, [searchQuery, selectedGenre, sortBy, mediaFilter]);
-
-  const handleGenreSelect = (genre) => {
-    setSelectedGenre(genre);
-    setPage(1);
-    setSearchParams(genre !== 'All' ? { genre } : {});
-  };
+    loadSongs({ search: searchQuery, sort: sortBy, page: 1 });
+  }, [searchQuery, sortBy]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
     setSearchParams(searchQuery ? { search: searchQuery } : {});
-    loadSongs({ search: searchQuery, genre: selectedGenre, sort: sortBy, media: mediaFilter, page: 1 });
+    loadSongs({ search: searchQuery, sort: sortBy, page: 1 });
   };
 
   const handlePageChange = (newPage) => {
@@ -126,79 +97,39 @@ export default function Browse() {
     loadSongs({ page: newPage });
   };
 
-  const handleClearFilters = () => {
+  const handleClearSearch = () => {
     setSearchQuery('');
-    setSelectedGenre('All');
-    setMediaFilter('all');
     setSortBy('popular');
     setPage(1);
     setSearchParams({});
   };
 
-  const hasActiveFilters = searchQuery || selectedGenre !== 'All' || mediaFilter !== 'all' || sortBy !== 'popular';
+  const hasActiveSearch = !!searchQuery;
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Search & Filters */}
-      <div className="glass-dark rounded-2xl border border-white/10 p-6 mb-8">
-        <form onSubmit={handleSearch} className="flex gap-3 mb-6">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by song, artist, album..."
-               className="input-field !pl-10"
-            />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <button type="submit" className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold hover:scale-105 transition shrink-0">
-            Search
-          </button>
-        </form>
+      {/* Search & Sort */}
+      <div className="glass-dark rounded-2xl border border-white/10 p-4 md:p-6 mb-8">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <form onSubmit={handleSearch} className="flex-1 flex gap-3">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search songs, artists, albums..."
+                className="input-field !pl-10"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <button type="submit" className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold hover:scale-105 transition shrink-0">
+              Search
+            </button>
+          </form>
 
-        {/* Genre Filters */}
-        <div className="mb-4">
-          <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Genres</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['All', ...GENRES].map((genre) => (
-              <button
-                key={genre}
-                onClick={() => handleGenreSelect(genre)}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
-                  selectedGenre === genre
-                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
-                    : 'btn-ghost'
-                }`}
-              >
-                {genre}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Media & Sort Filters */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Type:</span>
-            {MEDIA_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setMediaFilter(f.value)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-                  mediaFilter === f.value
-                    ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                    : 'text-slate-500 hover:text-slate-300 border border-white/10'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs text-slate-500 font-medium">Sort:</span>
             <select
               value={sortBy}
@@ -211,9 +142,9 @@ export default function Browse() {
             </select>
           </div>
 
-          {hasActiveFilters && (
-            <button onClick={handleClearFilters} className="text-xs text-accent-400 hover:text-accent-300 transition ml-auto">
-              Clear all filters
+          {hasActiveSearch && (
+            <button onClick={handleClearSearch} className="text-xs text-accent-400 hover:text-accent-300 transition whitespace-nowrap">
+              Clear search
             </button>
           )}
         </div>
@@ -235,22 +166,19 @@ export default function Browse() {
           <div className="text-5xl mb-4">🎵</div>
           <p className="text-slate-400 text-lg mb-2">No songs found</p>
           <p className="text-slate-500 text-sm mb-6">
-            {hasActiveFilters ? 'Try adjusting your filters or search query.' : 'No songs have been uploaded yet.'}
+            {hasActiveSearch ? 'Try adjusting your search query.' : 'No songs have been uploaded yet.'}
           </p>
-          {hasActiveFilters && (
-            <button onClick={handleClearFilters} className="px-6 py-2 rounded-full bg-primary-500 text-white font-medium hover:bg-primary-600 transition">
-              Clear Filters
+          {hasActiveSearch && (
+            <button onClick={handleClearSearch} className="px-6 py-2 rounded-full bg-primary-500 text-white font-medium hover:bg-primary-600 transition">
+              Clear Search
             </button>
           )}
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-sm text-slate-400">
-              {totalSongs} song{totalSongs !== 1 ? 's' : ''} found
-              {selectedGenre !== 'All' && <span className="text-slate-500"> in <span className="text-slate-300">{selectedGenre}</span></span>}
-            </p>
-          </div>
+          <p className="text-sm text-slate-400 mb-6">
+            {totalSongs} song{totalSongs !== 1 ? 's' : ''} found
+          </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
             {songs.map((song) => (

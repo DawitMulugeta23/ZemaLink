@@ -6,6 +6,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { api } from "../services/api";
 import { playlistService } from "../services/playlistService";
 import { songService } from "../services/songService";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 import { DEFAULT_COVER } from "../constants";
 
 function PlaylistDetail() {
@@ -138,8 +139,9 @@ function PlaylistDetail() {
     }
   };
 
+  const [confirmDeletePlaylist, setConfirmDeletePlaylist] = useState(false);
+
   const handleDeletePlaylist = async () => {
-    if (!window.confirm("Delete this playlist permanently? This cannot be undone.")) return;
     try {
       const res = await playlistService.deletePlaylist(id);
       if (res.success) {
@@ -178,6 +180,7 @@ function PlaylistDetail() {
   }
 
   return (
+    <>
     <div className="max-w-7xl mx-auto pb-4">
       <div className="rounded-3xl glass-dark p-6 md:p-8 mb-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-primary-500/15 via-accent-500/8 to-transparent blur-3xl pointer-events-none" />
@@ -231,7 +234,7 @@ function PlaylistDetail() {
               </button>
               {isOwner && (
                 <button
-                  onClick={handleDeletePlaylist}
+                  onClick={() => setConfirmDeletePlaylist(true)}
                   className="rounded-full bg-red-600/20 border border-red-500/20 px-5 py-2.5 text-xs font-semibold text-red-300 hover:bg-red-600/30 transition"
                 >
                   Delete Playlist
@@ -364,6 +367,16 @@ function PlaylistDetail() {
         </div>
       )}
     </div>
+      <ConfirmDialog
+        isOpen={confirmDeletePlaylist}
+        onClose={() => setConfirmDeletePlaylist(false)}
+        onConfirm={handleDeletePlaylist}
+        title="Delete Playlist"
+        message="Delete this playlist permanently? This cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
+    </>
   );
 }
 
