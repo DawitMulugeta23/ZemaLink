@@ -51,7 +51,11 @@ function StreamView() {
   const [buyingTicket, setBuyingTicket] = useState(false);
   const [ticketEvent, setTicketEvent] = useState(null);
   const [showChat, setShowChat] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
 
+  const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatSimInterval = useRef(null);
@@ -128,7 +132,11 @@ function StreamView() {
         }]);
         setViewers(prev => Math.max(5, prev + (Math.random() > 0.5 ? 1 : -1)));
       }, Math.random() * 4000 + 3500);
-      startVisualizer();
+      if (isCreator) {
+        startCamera();
+      } else {
+        startVisualizer();
+      }
     } else {
       clearInterval(chatSimInterval.current);
       clearInterval(messageFetchInterval.current);
@@ -284,6 +292,47 @@ function StreamView() {
     window.addEventListener("resize", handleResize);
   };
 
+  const startCamera = async () => {
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      setCameraStream(stream);
+      setCameraEnabled(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setCameraError("Camera access denied. Please allow camera permissions to stream.");
+      } else if (err.name === "NotFoundError") {
+        setCameraError("No camera found on this device.");
+      } else {
+        setCameraError("Could not access camera: " + err.message);
+      }
+      setCameraEnabled(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setCameraEnabled(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
   const intval = (val) => parseInt(val) || 0;
 
   const isCreator = stream && intval(stream.musician_id) === intval(user?.id);
@@ -377,7 +426,15 @@ function StreamView() {
 
         {stream.status === "live" && (
           <div className="absolute inset-0 w-full h-full">
-            {stream.stream_url ? (
+            {cameraEnabled && isCreator ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : stream.stream_url ? (
               <iframe
                 src={stream.stream_url.replace("watch?v=", "embed/")}
                 title="Live Stream Frame"
@@ -395,7 +452,7 @@ function StreamView() {
                     <span className="text-3xl">🎤</span>
                   </div>
                   <span className="text-xs uppercase tracking-widest text-white/50 block mt-4 font-semibold">
-                    Broadcasting Live Audio Feed
+                    {isCreator ? (cameraError || "Connecting to camera...") : "Broadcasting Live Audio Feed"}
                   </span>
                 </div>
               </div>
@@ -409,6 +466,23 @@ function StreamView() {
                 👥 {viewers} watching
               </span>
             </div>
+            {isCreator && stream.status === "live" && (
+              <div className="absolute bottom-4 right-4 flex gap-2 z-20">
+                <button
+                  onClick={cameraEnabled ? stopCamera : startCamera}
+                  className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg transition active:scale-95 ${
+                    cameraEnabled
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : cameraError
+                        ? "bg-red-600/80 text-white hover:bg-red-700"
+                        : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
+                >
+                  <span>{cameraEnabled ? "📷" : "📷"}</span>
+                  {cameraEnabled ? "Camera On" : cameraError ? "Camera Error" : "Enable Camera"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

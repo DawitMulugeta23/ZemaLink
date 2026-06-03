@@ -42,6 +42,42 @@ export default function Player() {
   const [showQueue, setShowQueue] = useState(false);
   const videoRef = useRef(null);
 
+  const handleKeyDown = useCallback((e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    switch (e.key) {
+      case " ":
+        e.preventDefault();
+        togglePlay();
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        seekTo(Math.max(0, currentTime - 5));
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        seekTo(Math.min(duration, currentTime + 5));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setVolume(Math.min(1, volume + 0.1));
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        setVolume(Math.max(0, volume - 0.1));
+        break;
+      case "m":
+      case "M":
+        e.preventDefault();
+        toggleMute();
+        break;
+    }
+  }, [togglePlay, seekTo, currentTime, duration, setVolume, volume, toggleMute]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
   const isLocked = currentSong?.is_premium && !currentSong?.can_play && !isPremium && !currentSong?.purchased;
 
   useEffect(() => {
