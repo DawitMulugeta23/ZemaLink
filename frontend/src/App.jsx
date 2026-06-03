@@ -6,7 +6,6 @@ import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import Navbar from "./components/layout/Navbar";
-import MusicPlayer from "./components/music/MusicPlayer";
 import Background from "./components/layout/Background";
 
 // Pages
@@ -48,7 +47,7 @@ function AppContent() {
       {!isAuthPage && <Navbar />}
       <div className={`${isAuthPage ? "" : "pt-14"} flex w-full max-w-full overflow-x-hidden`}>
         <main
-          className={`flex-1 w-full min-h-[calc(100vh-3.5rem)] mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 animate-fade-in ${user ? 'ml-20' : ''}`}
+          className="flex-1 w-full min-h-[calc(100vh-3.5rem)] mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8 animate-fade-in"
         >
           <Routes>
             {/* Public */}
@@ -90,7 +89,6 @@ function AppContent() {
           </Routes>
         </main>
       </div>
-      {user && <MusicPlayer />}
       <ToastContainer
         position="bottom-right"
         autoClose={3000}

@@ -12,23 +12,6 @@ function formatTime(t) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function WaveformBars({ isPlaying }) {
-  return (
-    <div className={`flex items-end gap-[3px] h-8 ${isPlaying ? '' : 'opacity-40'}`}>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="waveform-bar w-[3px] bg-primary-500 rounded-full"
-          style={{
-            height: `${Math.random() * 60 + 20}%`,
-            animationPlayState: isPlaying ? 'running' : 'paused',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 export default function Player() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isPremium } = useAuth();
@@ -41,6 +24,7 @@ export default function Player() {
 
   const [showQueue, setShowQueue] = useState(false);
   const videoRef = useRef(null);
+  const progressRef = useRef(null);
 
   const handleKeyDown = useCallback((e) => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
@@ -99,10 +83,12 @@ export default function Player() {
     }
   }, [isLocked, currentSong, navigate]);
 
-  const handleSeek = (e) => {
+  const handleProgressClick = (e) => {
     if (isLocked) return;
-    const val = parseFloat(e.target.value);
-    if (!isNaN(val) && duration) seekTo((val / 100) * duration);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    seekTo(pct * duration);
   };
 
   const isLiked = currentSong && likedSongs?.some((s) => s.id === currentSong.id);
@@ -112,6 +98,8 @@ export default function Player() {
 
   const audioSrc = currentSong?.file_path?.trim() || null;
   const isVideo = currentSong?.media_type === 'video';
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (authLoading) {
     return (
@@ -163,55 +151,45 @@ export default function Player() {
         {/* Main Player */}
         <div className="lg:col-span-2">
           <div className="glass-dark rounded-2xl border border-white/10 overflow-hidden">
-            {/* Background blur */}
-            <div className="relative">
+            {/* Cover art area with gradient overlay */}
+            <div className="relative bg-gradient-to-b from-surface-800 to-surface-900">
               <div
-                className="absolute inset-0 bg-cover bg-center blur-3xl opacity-20"
+                className="absolute inset-0 bg-cover bg-center opacity-30"
                 style={{ backgroundImage: `url(${coverImage})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-surface-900 via-surface-900/50 to-transparent" />
-
-              {/* Video or Album Art */}
-              <div className="relative p-6 md:p-10 flex justify-center">
+              <div className="relative flex items-center justify-center p-8 md:p-12">
                 {isVideo ? (
                   <video
                     ref={videoRef}
                     src={audioSrc}
-                    className="w-full max-w-lg aspect-video object-contain rounded-2xl shadow-2xl"
+                    className="w-full max-w-2xl aspect-video object-contain rounded-xl shadow-2xl"
                     poster={coverImage}
                     playsInline
                     controls
                   />
                 ) : (
-                  <div className="flex flex-col items-center gap-6">
-                    <div className="relative">
-                      <div className={`vinyl-record w-56 h-56 md:w-72 md:h-72 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '8s', animationTimingFunction: 'linear' }}>
-                        <img
-                          src={coverImage}
-                          alt={currentSong.title}
-                          className="absolute inset-0 w-full h-full rounded-full object-cover p-[18%]"
-                          onError={(e) => { e.target.src = DEFAULT_COVER; }}
-                        />
-                      </div>
-                      <div className="absolute inset-0 rounded-full shadow-[inset_0_0_30px_rgba(0,0,0,0.5)] pointer-events-none" />
-                    </div>
-                    <WaveformBars isPlaying={isPlaying} />
-                  </div>
+                  <img
+                    src={coverImage}
+                    alt={currentSong.title}
+                    className="w-full max-w-xs aspect-square object-cover rounded-2xl shadow-2xl ring-1 ring-white/10"
+                    onError={(e) => { e.target.src = DEFAULT_COVER; }}
+                  />
                 )}
               </div>
             </div>
 
-            {/* Song Info */}
+            {/* Controls section */}
             <div className="p-6 md:p-8">
+              {/* Song info row */}
               <div className="flex items-start justify-between mb-6">
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-2xl md:text-3xl font-bold text-white truncate flex items-center gap-2">
+                  <h1 className="text-xl md:text-2xl font-bold text-white truncate flex items-center gap-2">
                     {currentSong.title}
                     {currentSong.is_premium && (
                       <span className="shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase">PRO</span>
                     )}
                   </h1>
-                  <p className="text-lg text-slate-400 mt-1">{currentSong.artist}</p>
+                  <p className="text-base text-slate-400 mt-1">{currentSong.artist}</p>
                   {currentSong.album && <p className="text-sm text-slate-500 mt-0.5">{currentSong.album}</p>}
                 </div>
                 <button
@@ -223,41 +201,35 @@ export default function Player() {
                 </button>
               </div>
 
-              {/* Progress Bar */}
-              <div className="mb-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={duration ? (currentTime / duration) * 100 : 0}
-                  onChange={handleSeek}
-                  className="range-input w-full"
-                />
-                <div className="flex justify-between text-xs text-slate-500 mt-1">
+              {/* Progress bar */}
+              <div className="mb-1">
+                <div
+                  ref={progressRef}
+                  className="relative h-2 rounded-full bg-surface-700 cursor-pointer group"
+                  onClick={handleProgressClick}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-primary-500 to-accent-500 relative"
+                    style={{ width: `${progress}%` }}
+                  >
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow-md scale-0 group-hover:scale-100 transition-transform border-2 border-primary-500" />
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 mt-1.5">
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="flex items-center justify-center gap-4 md:gap-6 my-6">
-                <button onClick={prevSong} className="text-slate-400 hover:text-white text-xl transition hover:scale-110" title="Previous">
-                  ⏮
-                </button>
-                <button onClick={togglePlay} className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center text-white text-3xl md:text-4xl transition hover:scale-110 shadow-lg shadow-primary-500/25" title={isPlaying ? 'Pause' : 'Play'}>
-                  {isPlaying ? '⏸' : '▶'}
-                </button>
-                <button onClick={nextSong} className="text-slate-400 hover:text-white text-xl transition hover:scale-110" title="Next">
-                  ⏭
-                </button>
-              </div>
-
-              {/* Volume & Misc Controls */}
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex flex-col items-center gap-1">
-                  <button onClick={toggleMute} className="text-slate-500 hover:text-white transition text-lg" title={muted ? 'Unmute' : 'Mute'}>
-                    {muted ? '🔇' : '🔊'}
+              {/* Playback controls */}
+              <div className="flex items-center justify-between mt-6">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleMute}
+                    className="text-slate-500 hover:text-white transition text-lg"
+                    title={muted ? 'Unmute' : 'Mute'}
+                  >
+                    {muted ? '🔇' : volume < 0.3 ? '🔈' : volume < 0.7 ? '🔉' : '🔊'}
                   </button>
                   <input
                     type="range"
@@ -265,19 +237,42 @@ export default function Player() {
                     max="100"
                     value={volume * 100}
                     onChange={(e) => setVolume(parseInt(e.target.value) / 100)}
-                    className="range-input w-1 h-16 md:h-20"
-                    style={{ writingMode: "vertical-lr", direction: "rtl" }}
+                    className="range-input w-24"
                   />
+                  <span className="text-xs text-slate-500 w-8">{Math.round(volume * 100)}%</span>
                 </div>
-                <span className="text-xs text-slate-500 w-8 text-right">{Math.round(volume * 100)}%</span>
-                <div className="w-px h-6 bg-white/10" />
-                <button
-                  onClick={toggleLoop}
-                  className={`text-sm transition ${loop ? 'text-primary-400' : 'text-slate-500 hover:text-white'}`}
-                  title={loop ? 'Loop enabled' : 'Loop disabled'}
-                >
-                  🔁
-                </button>
+
+                <div className="flex items-center gap-3 md:gap-4">
+                  <button onClick={prevSong} className="text-slate-400 hover:text-white transition hover:scale-110" title="Previous">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                  </button>
+                  <button
+                    onClick={togglePlay}
+                    className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 flex items-center justify-center text-white text-2xl transition hover:scale-110 shadow-lg shadow-primary-500/25"
+                    title={isPlaying ? 'Pause' : 'Play'}
+                  >
+                    {isPlaying ? (
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    )}
+                  </button>
+                  <button onClick={nextSong} className="text-slate-400 hover:text-white transition hover:scale-110" title="Next">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleLoop}
+                    className={`text-sm transition ${loop ? 'text-primary-400' : 'text-slate-500 hover:text-white'}`}
+                    title={loop ? 'Loop enabled' : 'Loop disabled'}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={loop ? 2.5 : 2} viewBox="0 0 24 24">
+                      <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 014-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 01-4 4H3" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -379,8 +374,6 @@ export default function Player() {
           )}
         </div>
       </div>
-
-      {/* Audio playback is handled by PlayerContext's programmatic Audio element */}
     </div>
   );
 }

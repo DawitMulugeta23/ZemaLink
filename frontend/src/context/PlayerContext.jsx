@@ -1,4 +1,5 @@
 import { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { songService } from '../services/songService';
 
@@ -10,6 +11,7 @@ function hasPlayableSource(song) {
 
 export function PlayerProvider({ children }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const audioRef = useRef(new Audio());
   const mediaRef = useRef(null);
@@ -106,9 +108,10 @@ export function PlayerProvider({ children }) {
     setCurrentSong(song);
     setIsPlaying(true);
     if (typeof index === 'number' && index >= 0) setPlaylistIndex(index);
+    navigate('/player');
 
     if (song?.id) songService.recordListen(song.id).catch(() => {});
-  }, [currentSong, isPlaying, loadRelatedSongs]);
+  }, [currentSong, isPlaying, loadRelatedSongs, navigate]);
 
   const togglePlay = useCallback(() => {
     const el = audioRef.current;
