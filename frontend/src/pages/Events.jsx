@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { eventService } from "../services/eventService";
+import { paymentService } from "../services/paymentService";
+import MockCheckoutModal from "../components/payment/MockCheckoutModal";
 import { toast } from "react-toastify";
 
 function Events() {
@@ -12,6 +14,8 @@ function Events() {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [buying, setBuying] = useState(false);
+  const [showMockModal, setShowMockModal] = useState(false);
+  const [mockEventId, setMockEventId] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -32,6 +36,34 @@ function Events() {
 
   useEffect(() => { loadData(); }, [user]);
 
+  // Handle return from Chapa payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const tx_ref = params.get("tx_ref");
+    if (status === "success" && tx_ref && user) {
+      const verifyTicket = async () => {
+        setBuying(true);
+        try {
+          const res = await fetch(`/api/payment/verify-ticket?tx_ref=${tx_ref}`);
+          const data = await res.json();
+          if (data.success) {
+            toast.success(data.message || "Ticket verified!");
+            loadData();
+          } else {
+            toast.error(data.message || "Ticket verification failed");
+          }
+        } catch (err) {
+          toast.error("Failed to verify ticket payment");
+        } finally {
+          setBuying(false);
+        }
+        window.history.replaceState({}, "", "/events");
+      };
+      verifyTicket();
+    }
+  }, [user]);
+
   const now = useMemo(() => new Date().toISOString(), []);
 
   const filteredEvents = useMemo(() => {
@@ -44,21 +76,19 @@ function Events() {
 
   const handleBuyMock = async (eventId) => {
     if (!user) { toast.info("Please log in to purchase tickets"); return; }
-    setBuying(true);
-    try {
-      const res = await eventService.purchaseTicketMock(eventId);
-      if (res.success) {
-        toast.success(res.message || "Ticket purchased successfully!");
-        setSelectedEvent(null);
-        loadData();
-      } else {
-        toast.error(res.message || "Failed to buy ticket");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("An error occurred during checkout");
-    } finally {
-      setBuying(false);
+    setMockEventId(eventId);
+    setShowMockModal(true);
+  };
+
+  const handleMockPay = async (accountData) => {
+    if (!mockEventId) return;
+    const res = await paymentService.mockPurchaseTicket(mockEventId, accountData);
+    if (res.success) {
+      setShowMockModal(false);
+      setSelectedEvent(null);
+      loadData();
+    } else {
+      throw new Error(res.message || "Failed to buy ticket");
     }
   };
 
@@ -72,11 +102,24 @@ function Events() {
         if (res.already_purchased) {
           toast.info("You already own a ticket for this event");
           setSelectedEvent(null);
-        } else if (res.chapa?.data?.checkout_url) {
-          window.location.href = res.chapa.data.checkout_url;
-        } else {
-          toast.error("Could not retrieve checkout URL");
+          return;
         }
+        if (res.checkout_url) {
+          window.location.href = res.checkout_url;
+          return;
+        }
+        if (res.mock) {
+          const mockRes = await eventService.purchaseTicketMock(eventId);
+          if (mockRes.success) {
+            toast.success(mockRes.message || "Ticket purchased!");
+            setSelectedEvent(null);
+            loadData();
+          } else {
+            toast.error(mockRes.message || "Mock purchase failed");
+          }
+          return;
+        }
+        toast.error("Could not retrieve checkout URL");
       } else {
         toast.error(res.message || "Failed to initiate payment");
       }
@@ -95,6 +138,44 @@ function Events() {
       hour: "numeric", minute: "2-digit"
     });
   };
+
+  const printTicket = useCallback((tkt) => {
+    const win = window.open("", "_blank");
+    win.document.write(`
+      <html><head><title>Ticket - ${tkt.event_title}</title>
+      <style>
+        @page { margin: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f1f5f9; }
+        .ticket { width: 680px; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.15); }
+        .header { background: linear-gradient(135deg,#7c3aed,#ec4899); color: #fff; padding: 32px 36px; }
+        .header h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .header p { margin: 4px 0 0; opacity: .8; font-size: 13px; }
+        .body { padding: 32px 36px; }
+        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+        .row:last-child { border: 0; }
+        .label { color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+        .value { color: #0f172a; font-size: 15px; font-weight: 700; text-align: right; }
+        .code { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 16px 24px; margin-top: 20px; text-align: center; }
+        .code .big { font-size: 28px; letter-spacing: 4px; font-weight: 900; color: #0f172a; }
+        .code .sm { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; }
+        .footer { text-align: center; padding: 20px 36px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; }
+        @media print { body { background: #fff; } .ticket { box-shadow: none; border: 1px solid #e2e8f0; } }
+      </style></head><body>
+      <div class="ticket">
+        <div class="header"><h1>${tkt.event_title}</h1><p>${tkt.musician_name || "ZemaLink Event"}</p></div>
+        <div class="body">
+          <div class="row"><span class="label">Date & Time</span><span class="value">${formatDateTime(tkt.event_date)}</span></div>
+          <div class="row"><span class="label">Location</span><span class="value">${tkt.location}</span></div>
+          <div class="row"><span class="label">Ticket Holder</span><span class="value">${user?.name || "—"}</span></div>
+          <div class="row"><span class="label">Purchased</span><span class="value">${new Date(tkt.purchased_at).toLocaleDateString()}</span></div>
+          <div class="code"><div class="sm">Entry Code</div><div class="big">${tkt.ticket_code}</div></div>
+        </div>
+        <div class="footer">ZemaLink — zemailink.com</div>
+      </div>
+      <script>window.onload=function(){window.print();}<\/script></body></html>
+    `);
+    win.document.close();
+  }, [user, formatDateTime]);
 
   return (
     <div className="max-w-7xl mx-auto pb-12">
@@ -187,10 +268,9 @@ function Events() {
                 >
                   <div className="relative aspect-[16/9] w-full overflow-hidden bg-black/30">
                     <img
-                      src={ev.cover_image || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800"}
+                      src="https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800"
                       alt={ev.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800"; }}
                     />
                     <div className="absolute top-3 right-3 flex gap-2">
                       {ev.is_live_stream == 1 && (
@@ -297,6 +377,10 @@ function Events() {
                   <div className="mt-6 pt-4 border-t border-white/[0.06] flex justify-between items-center text-[10px] text-slate-500 font-mono">
                     <span>CODE: {tkt.ticket_code}</span>
                     <span>ISSUED: {new Date(tkt.purchased_at).toLocaleDateString()}</span>
+                    <button onClick={() => printTicket(tkt)}
+                      className="mt-2 w-full text-center bg-white/10 hover:bg-white/20 text-white text-[9px] uppercase font-bold tracking-wider py-1.5 rounded-lg transition">
+                      🖨️ Print / Download
+                    </button>
                   </div>
                 </div>
                 <div className="w-full sm:w-44 bg-black/20 flex flex-col justify-center items-center p-6 gap-3">
@@ -337,10 +421,9 @@ function Events() {
             </div>
             <div className="aspect-[16/9] w-full rounded-2xl overflow-hidden mb-4 bg-black/40 border border-white/[0.06]">
               <img
-                src={selectedEvent.cover_image || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800"}
+                src="https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800"
                 alt={selectedEvent.title}
                 className="w-full h-full object-cover"
-                onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=800"; }}
               />
             </div>
             <div className="space-y-3 mb-6">
@@ -405,6 +488,16 @@ function Events() {
           </div>
         </div>
       )}
+
+      <MockCheckoutModal
+        isOpen={showMockModal}
+        onClose={() => setShowMockModal(false)}
+        itemType="ticket"
+        itemId={mockEventId}
+        itemName={selectedEvent?.title}
+        amount={selectedEvent?.ticket_price}
+        onPay={handleMockPay}
+      />
     </div>
   );
 }

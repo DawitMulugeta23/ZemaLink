@@ -13,6 +13,8 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Browse from "./pages/Browse";
 import Search from "./pages/Search";
 import Library from "./pages/Library";
@@ -24,6 +26,7 @@ import Settings from "./pages/Settings";
 import Events from "./pages/Events";
 import LiveStreams from "./pages/LiveStreams";
 import StreamView from "./pages/StreamView";
+import ReplayPage from "./pages/ReplayPage";
 import MusicianDashboard from "./pages/MusicianDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminRegistered from "./pages/AdminRegistered";
@@ -55,12 +58,15 @@ function AppContent() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Auth Required (music content) */}
             <Route path="/browse" element={<ProtectedRoute><Browse /></ProtectedRoute>} />
             <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
             <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
             <Route path="/live-streams" element={<ProtectedRoute><LiveStreams /></ProtectedRoute>} />
+            <Route path="/live-streams/:id/replay" element={<ProtectedRoute><ReplayPage /></ProtectedRoute>} />
             <Route path="/live-streams/:id" element={<ProtectedRoute><StreamView /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
             <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />

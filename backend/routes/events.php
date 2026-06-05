@@ -118,7 +118,6 @@ switch ($method) {
         $ticketPrice = (float) ($input['ticket_price'] ?? 0);
         $totalTickets = (int) ($input['total_tickets'] ?? 100);
         $isLiveStream = !empty($input['is_live_stream']) ? 1 : 0;
-        $coverImage = $input['cover_image'] ?? null;
 
         if ($title === '' || $eventDate === '') {
             api_error('Title and event date are required');
@@ -130,11 +129,11 @@ switch ($method) {
 
         $stmt = $pdo->prepare(
             "INSERT INTO events (musician_id, title, description, event_date, location, 
-                                cover_image, ticket_price, total_tickets, is_live_stream)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                ticket_price, total_tickets, is_live_stream)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([$user['id'], $title, $description, $eventDate, $location,
-                        $coverImage, $ticketPrice, $totalTickets, $isLiveStream]);
+                        $ticketPrice, $totalTickets, $isLiveStream]);
 
         api_response([
             'success' => true,
@@ -165,19 +164,22 @@ switch ($method) {
         $ticketPrice = (float) ($input['ticket_price'] ?? 0);
         $totalTickets = (int) ($input['total_tickets'] ?? 100);
         $isLiveStream = !empty($input['is_live_stream']) ? 1 : 0;
-        $coverImage = $input['cover_image'] ?? null;
 
         if ($title === '' || $eventDate === '') {
             api_error('Title and event date are required');
         }
 
+        if ($eventDate !== '' && $eventDate <= date('Y-m-d\TH:i:s')) {
+            api_error('Event date must be in the future');
+        }
+
         $stmt = $pdo->prepare(
             "UPDATE events SET title = ?, description = ?, event_date = ?, location = ?,
-                              cover_image = ?, ticket_price = ?, total_tickets = ?, is_live_stream = ?
+                              ticket_price = ?, total_tickets = ?, is_live_stream = ?
              WHERE id = ? AND musician_id = ?"
         );
         $stmt->execute([$title, $description, $eventDate, $location,
-                        $coverImage, $ticketPrice, $totalTickets, $isLiveStream,
+                        $ticketPrice, $totalTickets, $isLiveStream,
                         $eventId, $user['id']]);
 
         api_response([

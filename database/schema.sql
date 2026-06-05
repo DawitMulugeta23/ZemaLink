@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS users (
     genre VARCHAR(100) DEFAULT NULL,
     platform_links TEXT DEFAULT NULL,
     remember_token VARCHAR(255) DEFAULT NULL,
+    reset_token VARCHAR(255) DEFAULT NULL,
+    reset_expires DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_role (role),
     INDEX idx_email (email),
@@ -214,9 +216,10 @@ CREATE TABLE IF NOT EXISTS live_streams (
     description TEXT DEFAULT NULL,
     cover_image VARCHAR(500) DEFAULT NULL,
     scheduled_at DATETIME DEFAULT NULL,
-    status ENUM('scheduled', 'live', 'ended') NOT NULL DEFAULT 'scheduled',
+    status ENUM('scheduled', 'pending', 'live', 'ended') NOT NULL DEFAULT 'scheduled',
     viewer_count INT UNSIGNED DEFAULT 0,
     stream_url VARCHAR(500) DEFAULT NULL,
+    video_url VARCHAR(500) DEFAULT NULL,
     ticket_required TINYINT(1) NOT NULL DEFAULT 0,
     ticket_price DECIMAL(10,2) DEFAULT 0.00,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
@@ -241,6 +244,20 @@ CREATE TABLE IF NOT EXISTS stream_messages (
     INDEX idx_created (created_at),
     CONSTRAINT fk_sm_stream FOREIGN KEY (stream_id) REFERENCES live_streams(id) ON DELETE CASCADE,
     CONSTRAINT fk_sm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Song ratings (user-submitted 1-5 stars)
+CREATE TABLE IF NOT EXISTS song_ratings (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    song_id INT UNSIGNED NOT NULL,
+    rating TINYINT UNSIGNED NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_user_song_rating (user_id, song_id),
+    INDEX idx_user (user_id),
+    INDEX idx_song (song_id),
+    CONSTRAINT fk_sr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sr_song FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Reports table

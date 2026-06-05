@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { liveStreamService } from "../services/liveStreamService";
 import { eventService } from "../services/eventService";
+import { paymentService } from "../services/paymentService";
 import { toast } from "react-toastify";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import MockCheckoutModal from "../components/payment/MockCheckoutModal";
 
 const MOCK_CHATTERS = [
   { name: "Aster_M", role: "audience", subscription: "premium" },
@@ -48,12 +50,15 @@ function StreamView() {
   const [relatedStreams, setRelatedStreams] = useState([]);
 
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+  const [showConfirmStart, setShowConfirmStart] = useState(false);
   const [buyingTicket, setBuyingTicket] = useState(false);
   const [ticketEvent, setTicketEvent] = useState(null);
+  const [showMockModal, setShowMockModal] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [cameraError, setCameraError] = useState(null);
+  const [joined, setJoined] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -121,28 +126,47 @@ function StreamView() {
   useEffect(() => {
     if (stream && stream.status === "live" && hasAccess) {
       messageFetchInterval.current = setInterval(loadMessages, 5000);
-      chatSimInterval.current = setInterval(() => {
-        const rChatter = MOCK_CHATTERS[Math.floor(Math.random() * MOCK_CHATTERS.length)];
-        const rComment = MOCK_COMMENTS[Math.floor(Math.random() * MOCK_COMMENTS.length)];
-        setMessages(prev => [...prev, {
-          id: "mock_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9),
-          stream_id: id, user_id: 0, user_name: rChatter.name,
-          user_role: rChatter.role, user_subscription: rChatter.subscription,
-          message: rComment, created_at: new Date().toISOString()
-        }]);
-        setViewers(prev => Math.max(5, prev + (Math.random() > 0.5 ? 1 : -1)));
-      }, Math.random() * 4000 + 3500);
       if (isCreator) {
-        startCamera();
+        // Creator manually enables camera
       } else {
         startVisualizer();
       }
+      startChatSimulation();
     } else {
       clearInterval(chatSimInterval.current);
       clearInterval(messageFetchInterval.current);
       cancelAnimationFrame(visualizerAnimation.current);
     }
-  }, [stream, hasAccess]);
+  }, [stream?.status, hasAccess]);
+
+  // Poll stream status when not live (for viewers waiting for start)
+  useEffect(() => {
+    if (!stream || stream.status === "live" || stream.status === "ended" || !hasAccess) return;
+    const interval = setInterval(() => {
+      liveStreamService.getStreamDetails(id).then(res => {
+        if (res.success && res.stream) {
+          setStream(res.stream);
+          setViewers(res.stream.viewer_count || 0);
+        }
+      }).catch(() => {});
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [id, stream?.status, hasAccess]);
+
+  const startChatSimulation = () => {
+    clearInterval(chatSimInterval.current);
+    chatSimInterval.current = setInterval(() => {
+      const rChatter = MOCK_CHATTERS[Math.floor(Math.random() * MOCK_CHATTERS.length)];
+      const rComment = MOCK_COMMENTS[Math.floor(Math.random() * MOCK_COMMENTS.length)];
+      setMessages(prev => [...prev, {
+        id: "mock_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9),
+        stream_id: id, user_id: 0, user_name: rChatter.name,
+        user_role: rChatter.role, user_subscription: rChatter.subscription,
+        message: rComment, created_at: new Date().toISOString()
+      }]);
+      setViewers(prev => Math.max(5, prev + (Math.random() > 0.5 ? 1 : -1)));
+    }, Math.random() * 4000 + 3500);
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -181,6 +205,53 @@ function StreamView() {
     }
   };
 
+  const handleStartStream = async () => {
+    try {
+      const res = await liveStreamService.updateStatus(id, "live");
+      if (res.success) {
+        toast.success("Stream is now live!");
+        loadStream();
+      } else {
+        toast.error(res.message || "Failed to start stream");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error starting stream");
+    }
+  };
+
+  const handleJoinStream = async () => {
+    try {
+      const res = await liveStreamService.updateStatus(id, "join");
+      if (res.success) {
+        setJoined(true);
+        setViewers(res.viewer_count || viewers + 1);
+        toast.success("Joined the stream");
+      } else {
+        toast.error(res.message || "Failed to join");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error joining stream");
+    }
+  };
+
+  const handleLeaveStream = async () => {
+    try {
+      const res = await liveStreamService.updateStatus(id, "leave");
+      if (res.success) {
+        setJoined(false);
+        setViewers(Math.max(0, res.viewer_count || viewers - 1));
+        toast.info("Left the stream");
+      } else {
+        toast.error(res.message || "Failed to leave");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error leaving stream");
+    }
+  };
+
   const handleShare = () => {
     const url = `${window.location.origin}/live-streams/${id}`;
     const shareText = `🎵 Tune in to "${stream.title}" live on ZemaLink!`;
@@ -196,20 +267,18 @@ function StreamView() {
   const handleBuyMockTicket = async () => {
     if (!user) { toast.info("Please log in to purchase tickets"); return; }
     if (!ticketEvent) return;
-    setBuyingTicket(true);
-    try {
-      const res = await eventService.purchaseTicketMock(ticketEvent.id);
-      if (res.success) {
-        toast.success("Ticket purchased! You can now join the stream.");
-        loadStream();
-      } else {
-        toast.error(res.message || "Failed to buy ticket");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("An error occurred during checkout");
-    } finally {
-      setBuyingTicket(false);
+    setShowMockModal(true);
+  };
+
+  const handleMockPay = async (accountData) => {
+    if (!ticketEvent) return;
+    const res = await paymentService.mockPurchaseTicket(ticketEvent.id, accountData);
+    if (res.success) {
+      setShowMockModal(false);
+      toast.success("Ticket purchased! You can now join the stream.");
+      loadStream();
+    } else {
+      throw new Error(res.message || "Failed to buy ticket");
     }
   };
 
@@ -416,6 +485,16 @@ function StreamView() {
 
       {/* ───── STREAM PLAYER ───── */}
       <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden bg-black/60 border border-white/[0.08] shadow-2xl flex flex-col items-center justify-center">
+        {stream.status === "pending" && (
+          <div className="text-center p-8">
+            <div className="text-5xl mb-4">⏳</div>
+            <h3 className="text-2xl font-extrabold text-white mt-4">Stream Not Started</h3>
+            <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">
+              {isCreator ? "Click 'Start Live' when you're ready to begin broadcasting." : "The streamer hasn't started yet. Check back soon!"}
+            </p>
+          </div>
+        )}
+
         {stream.status === "ended" && (
           <div className="text-center p-8">
             <div className="text-5xl">🛑</div>
@@ -452,21 +531,22 @@ function StreamView() {
                     <span className="text-3xl">🎤</span>
                   </div>
                   <span className="text-xs uppercase tracking-widest text-white/50 block mt-4 font-semibold">
-                    {isCreator ? (cameraError || "Connecting to camera...") : "Broadcasting Live Audio Feed"}
+                    {isCreator ? (cameraError || "Enable camera to start broadcasting") : "📡 Live audio feed"}
                   </span>
                 </div>
               </div>
             )}
+            {/* Status badges */}
             <div className="absolute top-4 left-4 flex gap-2 z-20">
               <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded shadow">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
                 LIVE
               </span>
-              <span className="bg-black/80 text-white text-[9px] px-2 py-0.5 rounded shadow flex items-center gap-1">
-                👥 {viewers} watching
+              <span className="bg-black/70 text-white text-[9px] px-2 py-0.5 rounded shadow">
+                👥 {viewers}
               </span>
             </div>
-            {isCreator && stream.status === "live" && (
+            {isCreator && (
               <div className="absolute bottom-4 right-4 flex gap-2 z-20">
                 <button
                   onClick={cameraEnabled ? stopCamera : startCamera}
@@ -478,7 +558,7 @@ function StreamView() {
                         : "bg-white/20 text-white hover:bg-white/30"
                   }`}
                 >
-                  <span>{cameraEnabled ? "📷" : "📷"}</span>
+                  <span>📷</span>
                   {cameraEnabled ? "Camera On" : cameraError ? "Camera Error" : "Enable Camera"}
                 </button>
               </div>
@@ -497,6 +577,14 @@ function StreamView() {
             <h2 className="text-xl font-bold text-white mt-0.5">{stream.title}</h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {isCreator && stream.status === "pending" && (
+              <button
+                onClick={() => setShowConfirmStart(true)}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition"
+              >
+                Start Live
+              </button>
+            )}
             {isCreator && stream.status === "live" && (
               <button
                 onClick={() => setShowConfirmEnd(true)}
@@ -504,6 +592,23 @@ function StreamView() {
               >
                 End Stream
               </button>
+            )}
+            {!isCreator && stream.status === "live" && (
+              joined ? (
+                <button
+                  onClick={handleLeaveStream}
+                  className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition"
+                >
+                  Leave Stream
+                </button>
+              ) : (
+                <button
+                  onClick={handleJoinStream}
+                  className="bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold text-xs px-4 py-2 rounded-xl active:scale-95 transition shadow-lg"
+                >
+                  Join Stream
+                </button>
+              )
             )}
             <button
               onClick={handleShare}
@@ -633,6 +738,16 @@ function StreamView() {
       </div>
 
       <ConfirmDialog
+        isOpen={showConfirmStart}
+        onClose={() => setShowConfirmStart(false)}
+        onConfirm={handleStartStream}
+        title="Start Live Stream"
+        message="Are you sure you want to start this live stream? Viewers will be able to join."
+        confirmText="Start Stream"
+        cancelText="Cancel"
+        variant="primary"
+      />
+      <ConfirmDialog
         isOpen={showConfirmEnd}
         onClose={() => setShowConfirmEnd(false)}
         onConfirm={handleEndStream}
@@ -641,6 +756,16 @@ function StreamView() {
         confirmText="End Stream"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      <MockCheckoutModal
+        isOpen={showMockModal}
+        onClose={() => setShowMockModal(false)}
+        itemType="ticket"
+        itemId={ticketEvent?.id}
+        itemName={ticketEvent?.title}
+        amount={ticketEvent?.ticket_price}
+        onPay={handleMockPay}
       />
     </div>
   );

@@ -117,7 +117,13 @@ switch ($method) {
             $maxPos->execute([$playlistId]);
             $nextPos = (int) $maxPos->fetchColumn();
 
-            $pdo->prepare("INSERT IGNORE INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)")
+            $check = $pdo->prepare("SELECT id FROM playlist_songs WHERE playlist_id = ? AND song_id = ?");
+            $check->execute([$playlistId, $songId]);
+            if ($check->fetch()) {
+                api_error('Song is already in this playlist');
+            }
+
+            $pdo->prepare("INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)")
                 ->execute([$playlistId, $songId, $nextPos]);
 
             api_response(['success' => true, 'message' => 'Song added to playlist']);

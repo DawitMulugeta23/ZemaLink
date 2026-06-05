@@ -136,12 +136,7 @@ function LiveStreams() {
                 Buy Ticket
               </Link>
             ) : isEnded ? (
-              <Link
-                to={`/live-streams/${stream.id}`}
-                className="rounded-xl px-4 py-2 text-xs font-bold transition bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10"
-              >
-                Watch Replay
-              </Link>
+              <span className="text-xs text-slate-500 px-4 py-2">Ended</span>
             ) : (
               <Link
                 to={`/live-streams/${stream.id}`}

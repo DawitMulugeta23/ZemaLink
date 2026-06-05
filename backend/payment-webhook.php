@@ -56,6 +56,30 @@ if (!is_array($data)) {
     exit();
 }
 
+// Verify HMAC signature if present (Chapa standard webhook security)
+$signature = $_SERVER['HTTP_CHAPA_SIGNATURE'] ?? $_SERVER['HTTP_X_CHAPA_SIGNATURE'] ?? '';
+$secretKey = $_ENV['CHAPA_SECRET_KEY'] ?? getenv('CHAPA_SECRET_KEY') ?: '';
+if ($signature !== '' && $secretKey !== '' && $secretKey !== 'YOUR_CHAPA_SECRET_KEY_HERE') {
+    $expected = hash_hmac('sha256', $rawInput, $secretKey);
+    if (!hash_equals($expected, $signature)) {
+        error_log('Chapa Webhook: Invalid HMAC signature');
+        http_response_code(403);
+        echo json_encode(['error' => 'Invalid signature']);
+        exit();
+    }
+}
+
+// Legacy secret check (fallback)
+if (!empty($data['secret'])) {
+    $expectedSecret = $secretKey;
+    if ($expectedSecret !== '' && $expectedSecret !== 'YOUR_CHAPA_SECRET_KEY_HERE' && $data['secret'] !== $expectedSecret) {
+        error_log('Chapa Webhook: Invalid secret');
+        http_response_code(403);
+        echo json_encode(['error' => 'Invalid secret']);
+        exit();
+    }
+}
+
 $txRef = trim((string) ($data['tx_ref'] ?? ''));
 $status = trim((string) ($data['status'] ?? ''));
 
@@ -65,14 +89,14 @@ if ($status !== 'success' || $txRef === '') {
     exit();
 }
 
-if (!empty($data['secret'])) {
-    $expectedSecret = $_ENV['CHAPA_SECRET_KEY'] ?? getenv('CHAPA_SECRET_KEY') ?: '';
-    if ($expectedSecret !== '' && $data['secret'] !== $expectedSecret) {
-        error_log('Chapa Webhook: Invalid secret');
-        http_response_code(403);
-        echo json_encode(['error' => 'Invalid secret']);
-        exit();
-    }
+// Duplicate prevention
+$checkDup = $pdo->prepare("SELECT id FROM payments WHERE transaction_id = ?");
+$checkDup->execute([$txRef]);
+if ($checkDup->fetch()) {
+    error_log("Chapa Webhook: Duplicate webhook for {$txRef}, already processed");
+    http_response_code(200);
+    echo json_encode(['status' => 'already_processed']);
+    exit();
 }
 
 $verifyResult = $chapaService->verifyPayment($txRef);

@@ -15,7 +15,7 @@ export default function Navbar() {
     { path: '/', label: '', show: false },
     { path: '/browse', label: 'Browse', show: isAuthenticated },
     { path: '/events', label: 'Events', show: isAuthenticated },
-    { path: '/live-streams', label: 'Live', show: isAuthenticated },
+    { path: '/live-streams', label: '', show: isAuthenticated },
     { path: '/library', label: 'Library', show: isAuthenticated },
     { path: '/playlists', label: 'Playlists', show: user?.role === 'musician' },
     { path: '/musician-dashboard', label: 'Studio', show: user?.role === 'musician' },

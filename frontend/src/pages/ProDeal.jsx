@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
 import { songService } from "../services/songService";
 import { paymentService } from "../services/paymentService";
+import MockCheckoutModal from "../components/payment/MockCheckoutModal";
 import { DEFAULT_COVER } from "../constants";
 
 function ProDeal() {
@@ -17,6 +18,7 @@ function ProDeal() {
   const [msg, setMsg] = useState("");
   const [alreadyPurchased, setAlreadyPurchased] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showMockModal, setShowMockModal] = useState(false);
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const songId = useMemo(() => {
@@ -35,11 +37,21 @@ function ProDeal() {
         return;
       }
       if (user) {
+        if (Number(found.uploader_id) === Number(user.id)) {
+          setAlreadyPurchased(true);
+          setSong(found);
+          setMsg("You are the creator of this track. Enjoy!");
+          playSong({ ...found, can_play: true });
+          navigate("/player");
+          return;
+        }
         const purchasedSongs = await songService.getPurchasedSongs();
         const isPurchased = purchasedSongs.some(s => Number(s.id) === songId);
-        if (isPurchased || found.can_play === true) {
+        if (isPurchased) {
           setAlreadyPurchased(true);
           setMsg("You already own this track! You can play it now.");
+          playSong({ ...found, can_play: true });
+          navigate("/player");
           return;
         }
       }
@@ -49,7 +61,7 @@ function ProDeal() {
     } finally {
       setBusy(false);
     }
-  }, [songId, user]);
+  }, [songId, user, playSong, navigate]);
 
   useEffect(() => {
     if (songId > 0) loadSong();
@@ -63,17 +75,17 @@ function ProDeal() {
       const verifyPayment = async () => {
         setBusy(true);
         try {
-          const response = await fetch(`/api/payment/verify-subscription?tx_ref=${tx_ref}`);
+          const response = await fetch(`/api/payment/verify-song?tx_ref=${tx_ref}&song_id=${songId}`);
           const result = await response.json();
           if (result.success) {
             toast.success("Payment successful! Track unlocked.");
             await refreshUser();
             const songs = await songService.getSongs();
             const updatedSong = songs.find(s => Number(s.id) === songId);
-            if (updatedSong && updatedSong.can_play !== false) {
+            if (updatedSong) {
               setAlreadyPurchased(true);
-              setMsg("Purchase complete! You can now play this track.");
-              setSong(updatedSong);
+              playSong({ ...updatedSong, can_play: true });
+              navigate("/player");
             }
           } else {
             toast.error(result.message || "Payment verification failed");
@@ -87,7 +99,7 @@ function ProDeal() {
       verifyPayment();
       window.history.replaceState({}, "", `/pro-deal?songId=${songId}`);
     }
-  }, [query, songId, refreshUser]);
+  }, [query, songId, refreshUser, playSong, navigate]);
 
   const payWithChapa = async () => {
     if (!song) return;
@@ -95,14 +107,32 @@ function ProDeal() {
     setMsg("");
     try {
       const result = await paymentService.initiateSongPurchase(song.id);
-      if (result.success && result.data?.data?.checkout_url) {
-        window.location.href = result.data.data.checkout_url;
-        return;
-      }
-      if (result.already_purchased) {
-        setAlreadyPurchased(true);
-        setMsg("You already own this track!");
-        return;
+      if (result.success) {
+        if (result.already_purchased) {
+          setAlreadyPurchased(true);
+          setMsg("You already own this track!");
+          playSong({ ...song, can_play: true });
+          navigate("/player");
+          return;
+        }
+        if (result.checkout_url) {
+          window.location.href = result.checkout_url;
+          return;
+        }
+        if (result.mock) {
+          const mockRes = await paymentService.mockPurchaseSong(song.id);
+          if (mockRes.success) {
+            toast.success("Purchase successful!");
+            await refreshUser();
+            setAlreadyPurchased(true);
+            setMsg("Purchase complete! Auto-playing now...");
+            playSong({ ...song, can_play: true });
+            navigate("/player");
+          } else {
+            setMsg(mockRes.message || "Mock purchase failed");
+          }
+          return;
+        }
       }
       setMsg(result.message || "Unable to initialize payment.");
       toast.error(result.message || "Payment failed");
@@ -114,34 +144,25 @@ function ProDeal() {
     }
   };
 
-  const playNow = () => {
+  const playNow = useCallback(() => {
     if (song) {
       playSong({ ...song, can_play: true });
       navigate("/player");
     }
-  };
+  }, [song, playSong, navigate]);
 
-  const payWithMock = async () => {
+  const handleMockPay = async (accountData) => {
     if (!song) return;
-    setBusy(true);
-    setMsg("");
-    try {
-      const result = await paymentService.mockPurchaseSong(song.id);
-      if (result.success) {
-        toast.success("Purchase successful! Track unlocked.");
-        setAlreadyPurchased(true);
-        setMsg("Purchase complete! You can now play this track.");
-        setShowConfirm(true);
-        await refreshUser();
-      } else {
-        setMsg(result.message || "Purchase failed");
-        toast.error(result.message || "Purchase failed");
-      }
-    } catch (error) {
-      setMsg("Purchase failed. Please try again.");
-      toast.error("Purchase failed");
-    } finally {
-      setBusy(false);
+    const result = await paymentService.mockPurchaseSong(song.id, accountData);
+    if (result.success) {
+      toast.success("Purchase successful!");
+      await refreshUser();
+      setAlreadyPurchased(true);
+      setMsg("Purchase complete! Auto-playing now...");
+      playSong({ ...song, can_play: true });
+      navigate("/player");
+    } else {
+      throw new Error(result.message || "Purchase failed");
     }
   };
 
@@ -248,10 +269,10 @@ function ProDeal() {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={payWithMock}
+                  onClick={() => setShowMockModal(true)}
                   className="rounded-xl border border-white/10 px-6 py-3 text-sm text-slate-300 hover:bg-white/5 transition disabled:opacity-50"
                 >
-                  🔧 Mock Payment (Test Mode)
+                  🏦 Mock Bank Payment
                 </button>
 
                 <Link to="/subscription" className="rounded-xl border border-white/10 px-6 py-3 text-sm text-center text-white/70 hover:bg-white/5 transition">
@@ -286,6 +307,16 @@ function ProDeal() {
           <li className="flex items-center gap-2">✓ Support the artist directly</li>
         </ul>
       </div>
+
+      <MockCheckoutModal
+        isOpen={showMockModal}
+        onClose={() => setShowMockModal(false)}
+        itemType="song"
+        itemId={song?.id}
+        itemName={song?.title}
+        amount={song?.price || 0.99}
+        onPay={handleMockPay}
+      />
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">

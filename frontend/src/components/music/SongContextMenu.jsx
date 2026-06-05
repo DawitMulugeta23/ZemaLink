@@ -147,9 +147,17 @@ export default function SongContextMenu({ song, position, onClose, isOpen }) {
   }, [showPlaylists]);
 
   const handlePlayNow = useCallback(() => {
+    const isPremiumUser = user?.subscription_status === 'premium';
+    const isOwner = song?.uploader_id && Number(song.uploader_id) === Number(user?.id);
+    const needsPurchase = song?.is_premium && !isPremiumUser && !song?.purchased && !isOwner;
+    if (needsPurchase) {
+      navigate(`/pro-deal?songId=${song.id}`);
+      onClose();
+      return;
+    }
     playSong({ ...song, can_play: true });
     onClose();
-  }, [song, playSong, onClose]);
+  }, [song, playSong, onClose, user, navigate]);
 
   const handlePlayNext = useCallback(() => {
     playNext(song);
@@ -170,7 +178,7 @@ export default function SongContextMenu({ song, position, onClose, isOpen }) {
         if (response.success) {
           toast.success(`"${song.title}" added to "${playlistName}"`);
         } else {
-          toast.error(response.error || "Failed to add song");
+          toast.error(response.message || "Failed to add song");
         }
       } catch {
         toast.error("An error occurred");

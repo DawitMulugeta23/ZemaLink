@@ -161,7 +161,7 @@ export function AuthProvider({ children }) {
         isAdmin: user?.role === 'admin',
         isMusician: user?.role === 'musician',
         isAudience: user?.role === 'audience',
-        isPremium: user?.subscription_status === 'premium',
+        isPremium: (user?.subscription_status === 'premium') || (user?.subscription === 'premium'),
         pendingVerificationEmail,
         login,
         register,

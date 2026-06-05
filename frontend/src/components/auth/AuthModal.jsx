@@ -26,6 +26,7 @@ export default function AuthModal({ onClose }) {
     if (password.length < 6) return 'Password must be at least 6 characters';
     if (!isLogin) {
       if (!name.trim()) return 'Name is required';
+      if (!/^[A-Za-z\s]+$/.test(name.trim())) return 'Name must contain only letters and spaces';
       if (password !== confirmPassword) return 'Passwords do not match';
     }
     return null;
@@ -139,7 +140,7 @@ export default function AuthModal({ onClose }) {
                 type="text"
                 placeholder="Full Name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => setName(e.target.value.replace(/[^A-Za-z\s]/g, ''))}
                 className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
                   isDark
                     ? 'bg-slate-800/50 border-white/10 text-white placeholder-slate-500'

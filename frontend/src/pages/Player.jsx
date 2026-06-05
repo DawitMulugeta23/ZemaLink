@@ -4,6 +4,8 @@ import { toast } from 'react-toastify';
 import { usePlayer } from '../context/PlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { DEFAULT_COVER } from '../constants';
+import RatingStars from '../components/music/RatingStars';
+import { songService } from '../services/songService';
 
 function formatTime(t) {
   if (!t || isNaN(t)) return '0:00';
@@ -92,6 +94,18 @@ export default function Player() {
   };
 
   const isLiked = currentSong && likedSongs?.some((s) => s.id === currentSong.id);
+  const [myRating, setMyRating] = useState(0);
+
+  const handleRate = async (rating) => {
+    if (!user) { toast.info('Please log in to rate songs'); return; }
+    try {
+      await songService.rateSong(currentSong.id, rating);
+      setMyRating(rating);
+      toast.success(`Rated ${rating} star${rating !== 1 ? 's' : ''}`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save rating');
+    }
+  };
 
   const coverImage = currentSong?.cover_image && currentSong.cover_image !== 'null'
     ? currentSong.cover_image : DEFAULT_COVER;

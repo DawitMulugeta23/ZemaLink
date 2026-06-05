@@ -28,6 +28,14 @@ export const authService = {
     return await api.post("auth/resend-code", { email });
   },
 
+  forgotPassword: async (email) => {
+    return await api.post("auth/forgot-password", { email });
+  },
+
+  resetPassword: async (token, password) => {
+    return await api.post("auth/reset-password", { token, password });
+  },
+
   adminExists: async () => {
     return await api.get("auth/admin-exists");
   },

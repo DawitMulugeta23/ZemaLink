@@ -130,6 +130,9 @@ function handleLogin(PDO $pdo): void
 
     session_regenerate_id(true);
 
+// lab 6
+
+
     if ((int) ($user['email_verified'] ?? 0) !== 1) {
         api_response([
             'success' => false,
@@ -224,6 +227,7 @@ function handleResendCode(PDO $pdo, EmailService $emailService): void
 
     if (!$user) {
         api_response(['success' => true, 'message' => 'If that email exists, a new code has been sent']);
+        return;
     }
 
     if ((int) ($user['email_verified'] ?? 0) === 1) {

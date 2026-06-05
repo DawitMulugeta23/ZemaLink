@@ -6,15 +6,28 @@ switch ($method) {
             handleGetMessages($pdo, $auth, (int) $sub);
         }
 
+        if (is_numeric($sub) && $subId === 'replay' && $subId2 === '') {
+            handleStreamReplay($pdo, $auth, (int) $sub);
+        }
+
         if (is_numeric($sub) && $subId === '') {
             handleStreamDetail($pdo, $auth, (int) $sub);
         }
 
         if ($sub === '') {
+            // Auto-end stale live streams (started but creator never joined)
+            $pdo->exec(
+                "UPDATE live_streams SET status = 'ended', viewer_count = 0 
+                 WHERE status = 'live' 
+                 AND scheduled_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
+                 AND stream_url IS NULL"
+            );
+
             $stmt = $pdo->query(
                 "SELECT l.*, u.name AS musician_name 
                  FROM live_streams l 
                  JOIN users u ON l.musician_id = u.id 
+                 WHERE l.status IN ('live','ended')
                  ORDER BY CASE WHEN l.status = 'live' THEN 1 ELSE 2 END, l.created_at DESC"
             );
             api_response(['success' => true, 'streams' => $stmt->fetchAll()]);
@@ -29,6 +42,10 @@ switch ($method) {
 
         if (is_numeric($sub) && $subId === 'messages' && $subId2 === '') {
             handlePostMessage($pdo, $auth, (int) $sub);
+        }
+
+        if (is_numeric($sub) && $subId === 'video-url' && $subId2 === '') {
+            handleSetVideoUrl($pdo, $auth, (int) $sub);
         }
 
         if ($sub === '') {
@@ -112,11 +129,11 @@ function handleCreateStream(PDO $pdo, AuthMiddleware $auth): void
         api_error('Title is required');
     }
 
-    $viewerCount = random_int(10, 100);
+    $viewerCount = 0;
     $stmt = $pdo->prepare(
         "INSERT INTO live_streams (musician_id, event_id, title, description, cover_image, 
                                   scheduled_at, ticket_required, ticket_price, status, stream_url, viewer_count)
-         VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, 'live', ?, ?)"
+         VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, 'pending', ?, ?)"
     );
     $stmt->execute([$user['id'], $eventId, $title, $description, $coverImage,
                     $ticketRequired, $ticketPrice, $streamUrl, $viewerCount]);
@@ -125,39 +142,81 @@ function handleCreateStream(PDO $pdo, AuthMiddleware $auth): void
 
     api_response([
         'success' => true,
-        'message' => 'Live stream started',
+        'message' => 'Live stream created',
         'stream_id' => $streamId,
-        'status' => 'live',
+        'status' => 'pending',
     ]);
 }
 
 function handleUpdateStreamStatus(PDO $pdo, AuthMiddleware $auth, int $streamId): void
 {
-    $user = $auth->requireApprovedMusician();
     $input = get_json_input();
-    $status = $input['status'] ?? 'ended';
+    $action = $input['action'] ?? $input['status'] ?? '';
+    $validActions = ['live', 'start', 'ended', 'end', 'join', 'leave'];
 
-    if (!in_array($status, ['live', 'ended'], true)) {
-        api_error('Invalid status. Must be: live or ended');
+    if (!in_array($action, $validActions, true)) {
+        api_error('Invalid action. Must be: start, end, join, or leave');
     }
 
-    $stmt = $pdo->prepare("SELECT id FROM live_streams WHERE id = ? AND musician_id = ?");
-    $stmt->execute([$streamId, $user['id']]);
-    if (!$stmt->fetch()) {
-        api_error('Stream not found or unauthorized', 404);
+    // Map aliases
+    $mode = match ($action) {
+        'live', 'start' => 'start',
+        'ended', 'end' => 'end',
+        'join' => 'join',
+        'leave' => 'leave',
+    };
+
+    // Get current stream info
+    $stmt = $pdo->prepare("SELECT id, musician_id, status FROM live_streams WHERE id = ?");
+    $stmt->execute([$streamId]);
+    $stream = $stmt->fetch();
+
+    if (!$stream) {
+        api_error('Stream not found', 404);
     }
 
-    if ($status === 'live') {
-        $viewerCount = random_int(10, 100);
-        $streamUrl = $input['stream_url'] ?? null;
-        $pdo->prepare("UPDATE live_streams SET status = 'live', stream_url = ?, viewer_count = ? WHERE id = ?")
-            ->execute([$streamUrl, $viewerCount, $streamId]);
-    } else {
-        $pdo->prepare("UPDATE live_streams SET status = 'ended', viewer_count = 0 WHERE id = ?")
+    // Owner-only actions (start/end)
+    if (in_array($mode, ['start', 'end'], true)) {
+        $user = $auth->requireApprovedMusician();
+        if ((int) $stream['musician_id'] !== (int) $user['id']) {
+            api_error('Only the stream owner can start or end the stream', 403);
+        }
+
+        if ($mode === 'start') {
+            if ($stream['status'] === 'ended') {
+                api_error('Cannot restart an ended stream');
+            }
+            $viewerCount = random_int(5, 20);
+            $streamUrl = $input['stream_url'] ?? null;
+            $pdo->prepare("UPDATE live_streams SET status = 'live', stream_url = ?, viewer_count = ?, scheduled_at = NOW() WHERE id = ?")
+                ->execute([$streamUrl, $viewerCount, $streamId]);
+            api_response(['success' => true, 'message' => 'Stream started', 'status' => 'live']);
+        } else {
+            $pdo->prepare("UPDATE live_streams SET status = 'ended', viewer_count = 0 WHERE id = ?")
+                ->execute([$streamId]);
+            api_response(['success' => true, 'message' => 'Stream ended', 'status' => 'ended']);
+        }
+        return;
+    }
+
+    // Viewer actions (join/leave)
+    $user = $auth->authenticate();
+
+    if ($mode === 'join') {
+        $pdo->prepare("UPDATE live_streams SET viewer_count = viewer_count + 1 WHERE id = ?")
             ->execute([$streamId]);
+        $stmt = $pdo->prepare("SELECT viewer_count FROM live_streams WHERE id = ?");
+        $stmt->execute([$streamId]);
+        $count = (int) $stmt->fetchColumn();
+        api_response(['success' => true, 'message' => 'Joined stream', 'action' => 'join', 'viewer_count' => $count]);
+    } else {
+        $pdo->prepare("UPDATE live_streams SET viewer_count = GREATEST(0, viewer_count - 1) WHERE id = ?")
+            ->execute([$streamId]);
+        $stmt = $pdo->prepare("SELECT viewer_count FROM live_streams WHERE id = ?");
+        $stmt->execute([$streamId]);
+        $count = (int) $stmt->fetchColumn();
+        api_response(['success' => true, 'message' => 'Left stream', 'action' => 'leave', 'viewer_count' => $count]);
     }
-
-    api_response(['success' => true, 'message' => $status === 'live' ? 'Stream started' : 'Stream ended', 'status' => $status]);
 }
 
 function handleGetMessages(PDO $pdo, AuthMiddleware $auth, int $streamId): void
@@ -182,7 +241,7 @@ function handleGetMessages(PDO $pdo, AuthMiddleware $auth, int $streamId): void
     }
 
     $stmt = $pdo->prepare(
-        "SELECT m.*, u.name AS user_name, u.role AS user_role
+        "SELECT m.*, u.name AS user_name, u.role AS user_role, u.subscription AS user_subscription
          FROM stream_messages m
          JOIN users u ON m.user_id = u.id
          WHERE m.stream_id = ?
@@ -191,6 +250,55 @@ function handleGetMessages(PDO $pdo, AuthMiddleware $auth, int $streamId): void
     );
     $stmt->execute([$streamId, $limit]);
     api_response(['success' => true, 'messages' => $stmt->fetchAll()]);
+}
+
+function handleStreamReplay(PDO $pdo, AuthMiddleware $auth, int $streamId): void
+{
+    $user = $auth->requireApprovedMusician();
+
+    $stmt = $pdo->prepare(
+        "SELECT l.*, u.name AS musician_name
+         FROM live_streams l
+         JOIN users u ON l.musician_id = u.id
+         WHERE l.id = ?"
+    );
+    $stmt->execute([$streamId]);
+    $stream = $stmt->fetch();
+
+    if (!$stream) {
+        api_error('Live stream not found', 404);
+    }
+
+    if ((int) $stream['musician_id'] !== (int) $user['id']) {
+        api_error('Only the stream owner can view the replay', 403);
+    }
+
+    if ($stream['platform_links']) {
+        $decoded = json_decode($stream['platform_links'], true);
+        $stream['platform_links'] = is_array($decoded) ? $decoded : [];
+    } else {
+        $stream['platform_links'] = [];
+    }
+
+    api_response(['success' => true, 'stream' => $stream]);
+}
+
+function handleSetVideoUrl(PDO $pdo, AuthMiddleware $auth, int $streamId): void
+{
+    $user = $auth->requireApprovedMusician();
+    $input = get_json_input();
+    $videoUrl = $input['video_url'] ?? '';
+
+    $stmt = $pdo->prepare("SELECT id FROM live_streams WHERE id = ? AND musician_id = ?");
+    $stmt->execute([$streamId, $user['id']]);
+    if (!$stmt->fetch()) {
+        api_error('Stream not found or unauthorized', 404);
+    }
+
+    $pdo->prepare("UPDATE live_streams SET video_url = ? WHERE id = ?")
+        ->execute([$videoUrl, $streamId]);
+
+    api_response(['success' => true, 'message' => 'Video URL saved']);
 }
 
 function handlePostMessage(PDO $pdo, AuthMiddleware $auth, int $streamId): void

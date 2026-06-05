@@ -39,7 +39,8 @@ export default function Register() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const newValue = name === 'name' ? value.replace(/[^A-Za-z\s]/g, '') : value;
+    setFormData((prev) => ({ ...prev, [name]: newValue }));
     if (validationErrors[name]) {
       setValidationErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -49,6 +50,7 @@ export default function Register() {
   const validate = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'Full name is required';
+    else if (!/^[A-Za-z\s]+$/.test(formData.name.trim())) errors.name = 'Name must contain only letters and spaces';
     if (!formData.email.trim()) errors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Invalid email format';
     if (!formData.password) errors.password = 'Password is required';

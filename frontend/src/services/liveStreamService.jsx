@@ -51,4 +51,12 @@ export const liveStreamService = {
   getMessages: async (streamId) => {
     return await api.get(`live-streams/${streamId}/messages`);
   },
+
+  getReplay: async (streamId) => {
+    return await api.get(`live-streams/${streamId}/replay`);
+  },
+
+  setVideoUrl: async (streamId, videoUrl) => {
+    return await api.post(`live-streams/${streamId}/video-url`, { video_url: videoUrl });
+  },
 };

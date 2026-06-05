@@ -67,8 +67,16 @@ function Subscription() {
     setBusy(true);
     try {
       const result = await paymentService.initiateSubscription(selectedPlan);
-      if (result.success && result.data?.data?.checkout_url) {
-        window.location.href = result.data.data.checkout_url;
+      if (result.success) {
+        if (result.checkout_url) {
+          window.location.href = result.checkout_url;
+          return;
+        }
+        if (result.mock) {
+          upgradeWithMock();
+          return;
+        }
+        toast.error("Could not retrieve checkout URL");
       } else {
         toast.error(result.message || "Failed to initialize payment");
       }

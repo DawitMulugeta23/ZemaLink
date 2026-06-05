@@ -10,14 +10,7 @@ export const eventService = {
   },
 
   createEvent: async (data) => {
-    if (data instanceof FormData) {
-      return await api.post("events", data);
-    }
-    const formData = new FormData();
-    Object.entries(data || {}).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-    return await api.post("events", formData);
+    return await api.post("events", data);
   },
 
   updateEvent: async (id, data) => {

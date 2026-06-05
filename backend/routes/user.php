@@ -18,6 +18,7 @@ switch ($method) {
         match ($sub) {
             'like' => handleToggleLike($pdo, $auth),
             'listen' => handleRecordListen($pdo, $auth),
+            'rate' => handleRateSong($pdo, $auth, $ratingService),
             'update-profile' => handleUpdateProfile($pdo, $auth, $uploadService),
             'change-password' => handleChangePassword($pdo, $auth),
             'upgrade-subscription' => handleUpgradeSubscription($pdo, $auth, $emailService),
@@ -215,6 +216,45 @@ function handleToggleLike(PDO $pdo, AuthMiddleware $auth): void
     $likeCount = (int) $stmt->fetchColumn();
 
     api_response(['success' => true, 'liked' => $liked, 'likes_count' => $likeCount]);
+}
+
+function handleRateSong(PDO $pdo, AuthMiddleware $auth, RatingService $ratingService): void
+{
+    $user = $auth->authenticate();
+    $input = get_json_input();
+    $songId = (int) ($input['song_id'] ?? 0);
+    $rating = (int) ($input['rating'] ?? 0);
+
+    if ($songId <= 0) {
+        api_error('Song ID is required');
+    }
+
+    if ($rating < 1 || $rating > 5) {
+        api_error('Rating must be between 1 and 5');
+    }
+
+    $stmt = $pdo->prepare("SELECT id FROM songs WHERE id = ?");
+    $stmt->execute([$songId]);
+    if (!$stmt->fetch()) {
+        api_error('Song not found');
+    }
+
+    $pdo->prepare("INSERT INTO song_ratings (user_id, song_id, rating) VALUES (?, ?, ?)
+                   ON DUPLICATE KEY UPDATE rating = VALUES(rating)")
+        ->execute([$user['id'], $songId, $rating]);
+
+    $stmt = $pdo->prepare("SELECT ROUND(AVG(rating), 2) as avg_rating, COUNT(*) as total FROM song_ratings WHERE song_id = ?");
+    $stmt->execute([$songId]);
+    $stats = $stmt->fetch();
+
+    $ratingService->updateSongRating($songId);
+
+    api_response([
+        'success' => true,
+        'message' => 'Rating saved',
+        'avg_rating' => (float) ($stats['avg_rating'] ?? 0),
+        'total_ratings' => (int) ($stats['total'] ?? 0),
+    ]);
 }
 
 function handleRecordListen(PDO $pdo, AuthMiddleware $auth): void

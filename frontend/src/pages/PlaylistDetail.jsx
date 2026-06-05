@@ -51,7 +51,16 @@ function PlaylistDetail() {
 
   const handlePlayAll = () => {
     if (songs.length === 0) return;
-    playSong({ ...songs[0], can_play: true });
+    const first = songs[0];
+    const isPremiumUser = user?.subscription_status === 'premium';
+    const isOwner = first?.uploader_id && Number(first.uploader_id) === Number(user?.id);
+    const needsPurchase = first?.is_premium && !isPremiumUser && !first?.purchased && !isOwner;
+    if (needsPurchase) {
+      toast.info("First song is premium. Please purchase to play.");
+      navigate(`/pro-deal?songId=${first.id}`);
+      return;
+    }
+    playSong({ ...first, can_play: true });
     navigate("/player");
   };
 
@@ -62,7 +71,7 @@ function PlaylistDetail() {
         toast.success("Song removed");
         setSongs((prev) => prev.filter((s) => String(s.id) !== String(songId)));
       } else {
-        toast.error(res.error || "Failed to remove song");
+        toast.error(res.message || "Failed to remove song");
       }
     } catch (err) {
       console.error(err);
@@ -129,7 +138,7 @@ function PlaylistDetail() {
         setShowAddSongs(false);
         loadPlaylist();
       } else {
-        toast.error(res.error || "Failed to add song");
+        toast.error(res.message || "Failed to add song");
       }
     } catch (err) {
       console.error(err);
@@ -148,7 +157,7 @@ function PlaylistDetail() {
         toast.success("Playlist deleted");
         navigate("/playlists");
       } else {
-        toast.error(res.error || "Failed to delete playlist");
+        toast.error(res.message || "Failed to delete playlist");
       }
     } catch (err) {
       console.error(err);
@@ -309,12 +318,12 @@ function PlaylistDetail() {
           <p className="text-slate-400 text-sm mb-6">
             Search for songs in our catalog and add them to this playlist!
           </p>
-          <button
-            onClick={() => setShowAddSongs(true)}
-            className="rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg transition"
+          <Link
+            to={`/musician-dashboard?tab=upload-song&playlist_id=${id}`}
+            className="rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg transition inline-block"
           >
             + Add Songs
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="space-y-2">

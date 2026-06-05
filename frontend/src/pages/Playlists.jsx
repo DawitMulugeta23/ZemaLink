@@ -54,7 +54,7 @@ function Playlists() {
         setModalOpen(false);
         loadPlaylists();
       } else {
-        toast.error(res.error || "Failed to create playlist");
+        toast.error(res.message || "Failed to create playlist");
       }
     } catch (err) {
       console.error(err);
@@ -74,7 +74,7 @@ function Playlists() {
         setDeleteTarget(null);
         loadPlaylists();
       } else {
-        toast.error(res.error || "Failed to delete playlist");
+        toast.error(res.message || "Failed to delete playlist");
       }
     } catch (err) {
       console.error(err);

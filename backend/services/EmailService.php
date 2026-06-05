@@ -99,37 +99,45 @@ class EmailService
 
     public function send(string $to, string $subject, string $htmlBody): bool
     {
-        if (!$this->configured) {
-            error_log("EmailService: SMTP not configured. Would send to {$to}: {$subject}");
-            return false;
+        if ($this->configured) {
+            try {
+                $mail = new PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host = $this->smtpHost;
+                $mail->SMTPAuth = true;
+                $mail->Username = $this->smtpUser;
+                $mail->Password = $this->smtpPass;
+                $mail->SMTPSecure = $this->smtpPort === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = $this->smtpPort;
+
+                $mail->setFrom($this->fromEmail ?? $this->smtpUser, $this->fromName);
+                $mail->addAddress($to);
+                $mail->isHTML(true);
+                $mail->Subject = $subject;
+                $mail->Body = $htmlBody;
+                $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $htmlBody));
+                $mail->CharSet = 'UTF-8';
+
+                return $mail->send();
+            } catch (PHPMailerException $e) {
+                error_log("EmailService: SMTP failed for {$to}: " . $e->getMessage() . " - falling back to mail()");
+            } catch (Throwable $e) {
+                error_log("EmailService: SMTP error for {$to}: " . $e->getMessage() . " - falling back to mail()");
+            }
         }
 
-        try {
-            $mail = new PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host = $this->smtpHost;
-            $mail->SMTPAuth = true;
-            $mail->Username = $this->smtpUser;
-            $mail->Password = $this->smtpPass;
-            $mail->SMTPSecure = $this->smtpPort === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port = $this->smtpPort;
+        // Fallback to PHP mail() when SMTP is not configured or fails
+        $textBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $htmlBody));
+        $headers = "From: " . ($this->fromEmail ?? 'noreply@zemalink.com') . "\r\n"
+                 . "MIME-Version: 1.0\r\n"
+                 . "Content-Type: text/plain; charset=UTF-8\r\n"
+                 . "X-Mailer: PHP/" . phpversion();
 
-            $mail->setFrom($this->fromEmail ?? $this->smtpUser, $this->fromName);
-            $mail->addAddress($to);
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body = $htmlBody;
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $htmlBody));
-            $mail->CharSet = 'UTF-8';
-
-            return $mail->send();
-        } catch (PHPMailerException $e) {
-            error_log("EmailService: Failed to send to {$to}: " . $e->getMessage());
-            return false;
-        } catch (Throwable $e) {
-            error_log("EmailService: Unexpected error sending to {$to}: " . $e->getMessage());
-            return false;
+        $sent = @mail($to, $subject, $textBody, $headers);
+        if (!$sent) {
+            error_log("EmailService: mail() failed for {$to}: {$subject}");
         }
+        return $sent;
     }
 
     private function buildTemplate(string $title, string $greeting, string $content, string $footerNote): string

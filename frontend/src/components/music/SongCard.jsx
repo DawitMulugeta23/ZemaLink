@@ -57,6 +57,10 @@ export default function SongCard({ song, onPlay, showActions = true }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentSong, isPlaying, playSong, togglePlay, likedSongs, toggleLike } = usePlayer();
+  const isPremiumUser = user?.subscription_status === 'premium';
+  const isOwner = song?.uploader_id && Number(song.uploader_id) === Number(user?.id);
+  const isVideo = song?.media_type === 'video';
+  const needsPurchase = song?.is_premium && !isPremiumUser && !song?.purchased && !isOwner;
   const [contextMenu, setContextMenu] = useState(null);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -90,19 +94,27 @@ export default function SongCard({ song, onPlay, showActions = true }) {
         navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
+      if (needsPurchase) {
+        navigate(`/pro-deal?songId=${song.id}`);
+        return;
+      }
       if (onPlay) {
         onPlay(song);
       } else {
         playSong({ ...song, can_play: true });
       }
     },
-    [user, song, onPlay, playSong, navigate],
+    [user, song, onPlay, playSong, navigate, needsPurchase],
   );
 
   const handleCardClick = useCallback(() => {
     if (!user) {
       toast.info("Please log in to play music.");
       navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (needsPurchase) {
+      navigate(`/pro-deal?songId=${song.id}`);
       return;
     }
     if (isCurrentlyPlaying) {
@@ -112,7 +124,7 @@ export default function SongCard({ song, onPlay, showActions = true }) {
     } else {
       playSong({ ...song, can_play: true });
     }
-  }, [user, isCurrentlyPlaying, togglePlay, onPlay, song, playSong, navigate]);
+  }, [user, isCurrentlyPlaying, togglePlay, onPlay, song, playSong, navigate, needsPurchase]);
 
   const handleLike = useCallback(
     (e) => {
@@ -216,9 +228,19 @@ export default function SongCard({ song, onPlay, showActions = true }) {
             </div>
           )}
 
+          {/* Video badge */}
+          {isVideo && (
+            <div className="absolute top-1.5 left-1.5">
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[9px] font-bold text-white uppercase tracking-wider">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Video
+              </span>
+            </div>
+          )}
+
           {/* Premium badge */}
           {song.is_premium && (
-            <div className="absolute top-1.5 left-1.5">
+            <div className="absolute top-1.5 right-1.5">
               <PremiumBadge size="sm" />
             </div>
           )}

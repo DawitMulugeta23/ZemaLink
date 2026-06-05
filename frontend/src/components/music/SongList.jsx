@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { usePlayer } from "../../context/PlayerContext";
 import { useAuth } from "../../context/AuthContext";
@@ -52,6 +53,7 @@ function SortArrow({ direction }) {
 }
 
 export default function SongList({ songs = [], onPlay, showHeader = true, compact = false }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentSong, isPlaying, playSong, togglePlay, likedSongs, toggleLike } = usePlayer();
   const [contextMenu, setContextMenu] = useState(null);
@@ -109,11 +111,24 @@ export default function SongList({ songs = [], onPlay, showHeader = true, compac
     });
   }, [songs, sortField, sortDir]);
 
+  const needsPurchaseCheck = useCallback(
+    (song) => {
+      const isPremiumUser = user?.subscription_status === 'premium';
+      const isOwner = song?.uploader_id && Number(song.uploader_id) === Number(user?.id);
+      return song?.is_premium && !isPremiumUser && !song?.purchased && !isOwner;
+    },
+    [user],
+  );
+
   const handleRowPlay = useCallback(
     (song, e) => {
       e.stopPropagation();
       if (!user) {
         toast.info("Please log in to play music.");
+        return;
+      }
+      if (needsPurchaseCheck(song)) {
+        navigate(`/pro-deal?songId=${song.id}`);
         return;
       }
       if (onPlay) {
@@ -122,12 +137,16 @@ export default function SongList({ songs = [], onPlay, showHeader = true, compac
         playSong({ ...song, can_play: true });
       }
     },
-    [user, onPlay, playSong],
+    [user, onPlay, playSong, navigate, needsPurchaseCheck],
   );
 
   const handleRowClick = useCallback(
     (song) => {
       if (!user) return;
+      if (needsPurchaseCheck(song)) {
+        navigate(`/pro-deal?songId=${song.id}`);
+        return;
+      }
       if (currentSong?.id === song.id && isPlaying) {
         togglePlay();
       } else if (onPlay) {
@@ -136,7 +155,7 @@ export default function SongList({ songs = [], onPlay, showHeader = true, compac
         playSong({ ...song, can_play: true });
       }
     },
-    [user, currentSong, isPlaying, togglePlay, onPlay, playSong],
+    [user, currentSong, isPlaying, togglePlay, onPlay, playSong, navigate, needsPurchaseCheck],
   );
 
   const handleLike = useCallback(

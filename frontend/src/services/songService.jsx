@@ -118,6 +118,10 @@ export const songService = {
     return response;
   },
 
+  rateSong: async (songId, rating) => {
+    return await api.post("user/rate", { song_id: songId, rating });
+  },
+
   listenSong: async (songId) => {
     return await api.post("user/listen", { song_id: songId });
   },
@@ -163,9 +167,7 @@ export const songService = {
   },
 
   toggleLike: async (songId) => {
-    const formData = new FormData();
-    formData.append("song_id", songId);
-    return await api.post("user/like", formData);
+    return await api.post("user/like", { song_id: songId });
   },
 
   getPlaylists: async () => {

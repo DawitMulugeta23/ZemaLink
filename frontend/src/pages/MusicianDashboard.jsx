@@ -204,7 +204,6 @@ function MusicianDashboard() {
     description: "",
     event_date: "",
     location: "Virtual (Live Stream)",
-    cover_image: "",
     ticket_price: "0.00",
     total_tickets: "100",
     is_live_stream: "0",
@@ -335,7 +334,7 @@ function MusicianDashboard() {
         : await eventService.createEvent(eventForm);
       if (res.success) {
         toast.success(editingEvent ? "Event updated!" : "Event created!");
-        setEventForm({ title: "", description: "", event_date: "", location: "Virtual (Live Stream)", cover_image: "", ticket_price: "0.00", total_tickets: "100", is_live_stream: "0" });
+        setEventForm({ title: "", description: "", event_date: "", location: "Virtual (Live Stream)", ticket_price: "0.00", total_tickets: "100", is_live_stream: "0" });
         setEditingEvent(null);
         load();
       } else {
@@ -360,7 +359,7 @@ function MusicianDashboard() {
     try {
       const res = await liveStreamService.createStream(streamForm);
       if (res.success) {
-        toast.success("Live stream started!");
+        toast.success("Stream created! Press 'Start Live' when ready.");
         setStreamForm({ title: "", description: "", ticket_required: "0", ticket_price: "0.00", event_id: "" });
         load();
       } else {
@@ -892,13 +891,6 @@ function MusicianDashboard() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block mb-1">Cover Image URL</label>
-                  <input type="text" placeholder="https://..." value={eventForm.cover_image}
-                    onChange={(e) => setEventForm({ ...eventForm, cover_image: e.target.value })}
-                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                  />
-                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block mb-1">Ticket Price (ETB)</label>
@@ -924,7 +916,7 @@ function MusicianDashboard() {
                 </div>
                 <div className="flex gap-2">
                   {editingEvent && (
-                    <button type="button" onClick={() => { setEditingEvent(null); setEventForm({ title: "", description: "", event_date: "", location: "Virtual (Live Stream)", cover_image: "", ticket_price: "0.00", total_tickets: "100", is_live_stream: "0" }); }}
+                    <button type="button" onClick={() => { setEditingEvent(null); setEventForm({ title: "", description: "", event_date: "", location: "Virtual (Live Stream)", ticket_price: "0.00", total_tickets: "100", is_live_stream: "0" }); }}
                       className="flex-1 rounded-xl border border-slate-200 dark:border-slate-600 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
                     >
                       Cancel
@@ -975,7 +967,7 @@ function MusicianDashboard() {
                       </div>
                     </div>
                     <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
-                      <button onClick={() => { setEditingEvent(ev); setEventForm({ title: ev.title, description: ev.description || "", event_date: ev.event_date?.slice(0, 16) || "", location: ev.location, cover_image: ev.cover_image || "", ticket_price: String(ev.ticket_price || "0"), total_tickets: String(ev.total_tickets || "100"), is_live_stream: String(ev.is_live_stream || "0") }); }}
+                      <button onClick={() => { setEditingEvent(ev); setEventForm({ title: ev.title, description: ev.description || "", event_date: ev.event_date?.slice(0, 16) || "", location: ev.location, ticket_price: String(ev.ticket_price || "0"), total_tickets: String(ev.total_tickets || "100"), is_live_stream: String(ev.is_live_stream || "0") }); }}
                         className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition"
                       >
                         Edit
@@ -1039,8 +1031,7 @@ function MusicianDashboard() {
                 <button type="submit"
                   className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl py-2.5 text-xs font-bold shadow-lg hover:shadow-green-500/25 transition flex items-center justify-center gap-2"
                 >
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Go Live Now
+                  Create Stream
                 </button>
               </form>
             </div>
@@ -1062,6 +1053,10 @@ function MusicianDashboard() {
                           <span className="flex items-center gap-1.5 text-[8px] uppercase tracking-wider px-2 py-0.5 rounded font-extrabold bg-red-500/80 text-white animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-white" />
                             LIVE
+                          </span>
+                        ) : str.status === "pending" ? (
+                          <span className="text-[8px] uppercase tracking-wider px-2 py-0.5 rounded font-extrabold bg-yellow-500/80 text-white">
+                            Pending
                           </span>
                         ) : (
                           <span className="text-[8px] uppercase tracking-wider px-2 py-0.5 rounded font-extrabold bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300">
@@ -1096,8 +1091,21 @@ function MusicianDashboard() {
                             Stop Stream
                           </button>
                         </>
+                      ) : str.status === "pending" ? (
+                        <>
+                          <button onClick={() => handleStreamStatus(str.id, "live")}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition font-semibold"
+                          >
+                            Start Live
+                          </button>
+                          <button onClick={() => setConfirmAction({ type: 'deleteStream', id: str.id })}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition"
+                          >
+                            Delete
+                          </button>
+                        </>
                       ) : (
-                        <Link to={`/live-streams/${str.id}`}
+                        <Link to={`/live-streams/${str.id}/replay`}
                           className="text-xs px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                         >
                           View Replay
